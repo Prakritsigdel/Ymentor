@@ -24,8 +24,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _processing = false;
   String? _error;
 
-  double get _platformFee => double.parse((widget.price * 0.2).toStringAsFixed(2));
-  double get _mentorPayout => double.parse((widget.price * 0.8).toStringAsFixed(2));
+  double get _platformFee => 4.0;
+  double get _mentorPayout => double.parse((widget.price - _platformFee).toStringAsFixed(2));
 
   Future<void> _confirmPayment() async {
     final auth = context.read<AuthProvider>();
@@ -63,12 +63,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
+      appBar: AppBar(title: const Text('Checkout & Escrow Hold')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('Order Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          const Text('Session Order Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 14),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -78,10 +78,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 10),
                   _row('Gross session fee', '\$${widget.price.toStringAsFixed(2)}'),
                   const SizedBox(height: 10),
-                  _row('Platform protection fee (20%)', '\$${_platformFee.toStringAsFixed(2)}',
+                  _row('Platform protection fee (escrow)', '\$${_platformFee.toStringAsFixed(2)}',
                       color: AppColors.textSecondary),
                   const Divider(height: 24, color: AppColors.border),
-                  _row('Mentor net payout (80%, held in escrow)', '\$${_mentorPayout.toStringAsFixed(2)}',
+                  _row('Mentor net payout (held in escrow)', '\$${_mentorPayout.toStringAsFixed(2)}',
                       color: AppColors.mint, bold: true),
                   const Divider(height: 24, color: AppColors.border),
                   _row('Total charged today', '\$${widget.price.toStringAsFixed(2)}', bold: true),
@@ -89,25 +89,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text('Sandbox Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
+          const Text('Sandbox Escrow Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
           const _DemoCardForm(),
           if (_error != null) ...[
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+              ),
+              child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+            ),
           ],
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _processing ? null : _confirmPayment,
             child: _processing
                 ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Confirm Demo Payment'),
+                : Text('Confirm Escrow Payment · \$${widget.price.toStringAsFixed(2)}'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Center(
-            child: Text('Funds are held in escrow until the session is marked complete.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12), textAlign: TextAlign.center),
+            child: Text(
+              'Funds are securely held in escrow until the session is completed and reviewed.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -139,7 +150,7 @@ class _DemoCardForm extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: const [
-            _PrefilledField(label: 'Card number', value: '4242 4242 4242 4242'),
+            _PrefilledField(label: 'Sandbox Card Number', value: '4242 •••• •••• 4242'),
             SizedBox(height: 12),
             Row(
               children: [
@@ -189,14 +200,14 @@ class _ReceiptDialog extends StatelessWidget {
         children: [
           _line('Transaction ID', '${receipt['transactionId'] ?? '-'}'),
           _line('Gross amount', '\$${(receipt['grossAmount'] ?? 0).toStringAsFixed(2)}'),
-          _line('Platform fee', '\$${(receipt['platformProtectionFee'] ?? 0).toStringAsFixed(2)}'),
-          _line('Mentor payout (escrow)', '\$${(receipt['mentorNetPayout'] ?? 0).toStringAsFixed(2)}'),
-          _line('Escrow status', '${receipt['escrowStatus'] ?? 'HELD'}'),
+          _line('Platform fee', '\$${(receipt['platformProtectionFee'] ?? 4.0).toStringAsFixed(2)}'),
+          _line('Mentor payout (escrow)', '\$${(receipt['mentorNetPayout'] ?? 16.0).toStringAsFixed(2)}'),
+          _line('Escrow status', '${receipt['escrowStatus'] ?? 'held_in_escrow'}'),
           _line('Remaining wallet', '\$${(receipt['remainingWallet'] ?? 0).toStringAsFixed(2)}'),
         ],
       ),
       actions: [
-        ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Done')),
+        ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Go to Sessions')),
       ],
     );
   }

@@ -44,7 +44,6 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
     }
   }
 
-  // Determines how many contiguous 30-min slots are needed for the chosen duration.
   int get _slotsNeeded => _selectedDuration ~/ 30;
 
   Future<void> _openLink(String url) async {
@@ -61,8 +60,7 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
     final auth = context.read<AuthProvider>();
 
     if (!auth.isLoggedIn) {
-      // Auth guard: stash the intended booking, then redirect to login.
-      await auth.setPendingBooking(PendingBooking(
+      await auth.savePendingBooking(PendingBooking(
         mentorId: mentor.id,
         durationMinutes: _selectedDuration,
         price: price,
@@ -91,6 +89,14 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
       );
     }
 
+    final headlineDisplay = mentor.headline.isNotEmpty
+        ? mentor.headline
+        : (mentor.title.isNotEmpty ? mentor.title : mentor.faculty);
+
+    final allSkills = mentor.skillsOrInterests.isNotEmpty
+        ? mentor.skillsOrInterests
+        : mentor.qualifications.skills;
+
     return Scaffold(
       appBar: AppBar(title: Text(mentor.name)),
       body: ListView(
@@ -100,8 +106,14 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 36,
-                backgroundColor: AppColors.border,
+                backgroundColor: AppColors.mint.withValues(alpha: 0.18),
                 backgroundImage: mentor.avatarUrl.isNotEmpty ? NetworkImage(mentor.avatarUrl) : null,
+                child: mentor.avatarUrl.isEmpty
+                    ? Text(
+                        mentor.name.isNotEmpty ? mentor.name[0] : 'M',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.mint),
+                      )
+                    : null,
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -109,14 +121,17 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      Flexible(child: Text(mentor.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-                      if (mentor.isSkillVerified) ...[
+                      Flexible(
+                        child: Text(mentor.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      ),
+                      if (mentor.isSkillVerified || mentor.isIdentityVerified) ...[
                         const SizedBox(width: 6),
                         const Icon(Icons.verified, color: AppColors.verified, size: 18),
                       ],
                     ]),
                     const SizedBox(height: 4),
-                    Text(mentor.headline, style: const TextStyle(color: AppColors.textSecondary)),
+                    if (headlineDisplay.isNotEmpty)
+                      Text(headlineDisplay, style: const TextStyle(color: AppColors.textSecondary)),
                     const SizedBox(height: 6),
                     Row(children: [
                       const Icon(Icons.star, color: AppColors.star, size: 16),
@@ -129,19 +144,25 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Text(mentor.bio, style: const TextStyle(height: 1.5)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: mentor.qualifications.skills
-                .map((s) => Chip(label: Text(s), backgroundColor: AppColors.surface))
-                .toList(),
-          ),
-          const SizedBox(height: 8),
-          Text('${mentor.qualifications.degree} · ${mentor.qualifications.faculty}',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          const SizedBox(height: 12),
+          if (mentor.bio.isNotEmpty) ...[
+            Text(mentor.bio, style: const TextStyle(height: 1.5)),
+            const SizedBox(height: 16),
+          ],
+          if (allSkills.isNotEmpty) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: allSkills.map((s) => Chip(label: Text(s), backgroundColor: AppColors.surface)).toList(),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (mentor.faculty.isNotEmpty || mentor.qualifications.degree.isNotEmpty) ...[
+            Text(
+              '${mentor.qualifications.degree.isNotEmpty ? mentor.qualifications.degree : mentor.title} · ${mentor.faculty.isNotEmpty ? mentor.faculty : mentor.qualifications.faculty}',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               if (mentor.qualifications.githubUrl.isNotEmpty)
@@ -171,8 +192,10 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          Text('Available slots (need $_slotsNeeded contiguous)',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            'Available slots (need $_slotsNeeded contiguous)',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
@@ -189,7 +212,7 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
               final selected = _selectedSlotId == slot['id'];
               return OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: selected ? AppColors.mint.withOpacity(0.15) : null,
+                  backgroundColor: selected ? AppColors.mint.withValues(alpha: 0.15) : null,
                   side: BorderSide(color: selected ? AppColors.mint : AppColors.border),
                 ),
                 onPressed: () => setState(() => _selectedSlotId = slot['id']),
@@ -216,15 +239,18 @@ class _MentorProfileScreenState extends State<MentorProfileScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? AppColors.mint.withOpacity(0.15) : AppColors.surface,
+            color: selected ? AppColors.mint.withValues(alpha: 0.15) : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: selected ? AppColors.mint : AppColors.border),
           ),
           child: Column(
             children: [
-              Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: selected ? AppColors.mint : AppColors.textPrimary)),
+              Text(label,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, color: selected ? AppColors.mint : AppColors.textPrimary)),
               const SizedBox(height: 4),
-              Text('\$${price.toStringAsFixed(0)}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text('\$${price.toStringAsFixed(0)}',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             ],
           ),
         ),

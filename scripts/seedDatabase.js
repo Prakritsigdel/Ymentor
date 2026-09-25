@@ -1,10 +1,11 @@
 /**
- * One-time seed script for real MongoDB.
+ * Baseline Seed Script for MongoDB
  * Run with: node scripts/seedDatabase.js
  *
- * Populates the same demo mentors / mentee / workspace / note / booking
- * that server.js used to create automatically in its in-memory fallback.
- * Safe to re-run: it skips any user whose email already exists.
+ * Populates ONLY the 3 baseline demo accounts:
+ * - Admin: admin@ymentor.com / admin123
+ * - Mentor: mentor.sarah@ymentor.com / mentor123
+ * - Mentee: student.jordan@ymentor.com / student123
  */
 
 const mongoose = require('mongoose');
@@ -16,211 +17,130 @@ const Workspace = require('../models/Workspace');
 const Note = require('../models/Note');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ymentor';
-const DEMO_PASSWORD = 'password123';
 
-const mentorsData = [
+const baselineUsers = [
   {
-    name: 'Dr. Sarah Lin',
-    email: 'sarah.lin@ymentor.demo',
-    headline: 'Staff Distributed Systems Engineer @ Stripe',
-    bio: 'Ex-Google Cloud Principal. 12+ years building high-throughput payment architectures, Kafka clusters, and mentoring senior ICs on Staff+ promotions.',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    qualifications: {
-      degree: 'Ph.D. in Distributed Systems',
-      faculty: 'MIT Computer Science & AI Lab',
-      skills: ['System Design', 'Go', 'Kubernetes', 'High Concurrency', 'Architecture'],
-      githubUrl: 'https://github.com/sarah-lin-dist',
-      linkedinUrl: 'https://linkedin.com/in/sarah-lin',
-    },
-    pricingTiers: { tier30m: 14.0, tier60m: 24.0, tier120m: 45.0 },
-    meetingUrl: 'https://meet.google.com/ymentor-sarah-lin',
-    ratingAvg: 4.98,
-    totalSessions: 142,
-    walletBalance: 2480.0,
+    name: 'System Administrator',
+    email: 'admin@ymentor.com',
+    password: 'admin123',
+    role: 'admin',
+    status: 'active',
+    isOnboarded: true,
+    headline: 'Platform Arbiter & Admin',
+    bio: 'Ymentor Lead Administrator managing verification, escrow disputes, and platform health.',
+    faculty: 'System Administration',
+    skillsOrInterests: ['System Administration', 'Compliance', 'Security'],
+    hourlyRate: 0,
+    wallet: { balance: 500.0, pendingEscrow: 0.0 },
+    walletBalance: 500.0,
+    isIdentityVerified: true,
+    isSkillVerified: true,
   },
   {
-    name: 'Alex Rivera',
-    email: 'alex.rivera@ymentor.demo',
-    headline: 'Lead Mobile Architect & Flutter Core Contributor',
-    bio: 'Crafting 60fps Flutter apps for 10M+ MAU fintech products. Specializing in state management (Riverpod/Bloc), custom shaders, and cross-platform native plugins.',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    name: 'Sarah Connor',
+    email: 'mentor.sarah@ymentor.com',
+    password: 'mentor123',
+    role: 'mentor',
+    status: 'active',
+    isOnboarded: true,
+    title: 'Senior AI Engineer',
+    hourlyRate: 20,
+    skillsOrInterests: ['AI', 'Python', 'Flutter'],
+    headline: 'Senior AI Engineer & Tech Lead',
+    bio: 'Senior AI Engineer specializing in production LLMs, PyTorch pipelines, and performant Flutter interfaces.',
+    faculty: 'Computer Science & AI',
     qualifications: {
-      degree: 'B.S. in Software Engineering',
-      faculty: 'Stanford University',
-      skills: ['Flutter', 'Dart', 'Mobile Architecture', 'iOS/Android', 'Performance'],
-      githubUrl: 'https://github.com/alex-rivera-dart',
-      linkedinUrl: 'https://linkedin.com/in/alex-rivera',
+      degree: 'M.S. in Computer Science',
+      faculty: 'Computer Science & AI',
+      skills: ['AI', 'Python', 'Flutter'],
+      githubUrl: 'https://github.com/sarah-ai-ymentor',
+      linkedinUrl: 'https://linkedin.com/in/sarah-connor-ymentor',
     },
     pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
-    meetingUrl: 'https://meet.google.com/ymentor-alex-rivera',
+    meetingUrl: 'https://meet.google.com/ymentor-sarah-mentor',
     ratingAvg: 4.95,
-    totalSessions: 98,
-    walletBalance: 1568.0,
+    totalSessions: 38,
+    wallet: { balance: 320.0, pendingEscrow: 16.0 },
+    walletBalance: 320.0,
+    isIdentityVerified: true,
+    isSkillVerified: true,
   },
   {
-    name: 'Marcus Vance',
-    email: 'marcus.vance@ymentor.demo',
-    headline: 'Senior Backend & DB Specialist @ Datadog',
-    bio: 'Mastering MongoDB aggregations, query indexing, Node.js event-loop tuning, and Microservices decomposition. Mentored 40+ junior devs into senior roles.',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    name: 'Jordan Cole',
+    email: 'student.jordan@ymentor.com',
+    password: 'student123',
+    role: 'mentee',
+    status: 'active',
+    isOnboarded: true,
+    faculty: 'Computer Science',
+    skillsOrInterests: ['AI', 'Python'],
+    headline: 'Aspiring Mobile & AI Software Engineer',
+    bio: 'Computer Science undergrad passionate about machine learning systems and cross-platform Flutter development.',
     qualifications: {
-      degree: 'M.S. in Information Systems',
-      faculty: 'Carnegie Mellon University',
-      skills: ['Node.js', 'MongoDB', 'Express', 'Redis', 'Database Tuning'],
-      githubUrl: 'https://github.com/marcus-vance-io',
-      linkedinUrl: 'https://linkedin.com/in/marcus-vance',
+      degree: 'B.S. in Computer Science (Candidate)',
+      faculty: 'Computer Science',
+      skills: ['AI', 'Python'],
+      githubUrl: 'https://github.com/jordan-cole-student',
+      linkedinUrl: 'https://linkedin.com/in/jordan-cole',
     },
-    pricingTiers: { tier30m: 10.0, tier60m: 18.0, tier120m: 34.0 },
-    meetingUrl: 'https://meet.google.com/ymentor-marcus-vance',
-    ratingAvg: 4.92,
-    totalSessions: 84,
-    walletBalance: 1210.0,
-  },
-  {
-    name: 'Elena Rostova',
-    email: 'elena.rostova@ymentor.demo',
-    headline: 'Principal AI & Python Systems Engineer',
-    bio: 'Production LLMs, vector database pipelines (Pinecone/Qdrant), LangChain architectures, and robust Python microservices.',
-    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-    qualifications: {
-      degree: 'M.S. in Artificial Intelligence',
-      faculty: 'ETH Zurich',
-      skills: ['Python', 'System Design', 'FastAPI', 'MLOps', 'PyTorch'],
-      githubUrl: 'https://github.com/elena-ai',
-      linkedinUrl: 'https://linkedin.com/in/elena-rostova',
-    },
-    pricingTiers: { tier30m: 15.0, tier60m: 28.0, tier120m: 52.0 },
-    meetingUrl: 'https://meet.google.com/ymentor-elena-rostova',
-    ratingAvg: 4.96,
-    totalSessions: 61,
-    walletBalance: 1360.0,
+    pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
+    meetingUrl: 'https://meet.google.com/abc-defg-hij',
+    ratingAvg: 5.0,
+    totalSessions: 2,
+    wallet: { balance: 140.0, pendingEscrow: 0.0 },
+    walletBalance: 140.0,
+    isIdentityVerified: true,
+    isSkillVerified: false,
   },
 ];
-
-const menteeData = {
-  name: 'Jordan Cole',
-  email: 'jordan.cole@gmail.com',
-  headline: 'Aspiring Mobile & Cloud Engineer',
-  bio: 'Learning Flutter and modern backend microservices. Preparing for tech interviews.',
-  avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-  qualifications: {
-    degree: 'B.S. Candidate',
-    faculty: 'Computer Science',
-    skills: ['Flutter', 'Dart', 'JavaScript'],
-    githubUrl: 'https://github.com/jordan-cole',
-    linkedinUrl: 'https://linkedin.com/in/jordan-cole',
-  },
-  pricingTiers: { tier30m: 12, tier60m: 20, tier120m: 38 },
-  ratingAvg: 5.0,
-  totalSessions: 3,
-  walletBalance: 120.0,
-};
-
-async function upsertUser(data, role) {
-  const existing = await User.findOne({ email: data.email.toLowerCase() });
-  if (existing) {
-    console.log(`  - ${data.email} already exists, skipping.`);
-    return existing;
-  }
-  const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
-  const user = new User({
-    ...data,
-    email: data.email.toLowerCase(),
-    password: hashedPassword,
-    role,
-    isIdentityVerified: true,
-    isSkillVerified: role === 'mentor',
-  });
-  user.calculateLeaderboardScore();
-  await user.save();
-  console.log(`  - created ${role}: ${data.email}`);
-  return user;
-}
 
 async function run() {
   console.log(`Connecting to ${MONGODB_URI} ...`);
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
-  console.log('Connected.\n');
+  console.log('Connected.');
 
-  console.log('Seeding mentors...');
-  const mentors = [];
-  for (const m of mentorsData) {
-    mentors.push(await upsertUser(m, 'mentor'));
+  for (const u of baselineUsers) {
+    const existing = await User.findOne({ email: u.email.toLowerCase() });
+    if (existing) {
+      console.log(`  - ${u.email} already exists, skipping.`);
+    } else {
+      const hashedPassword = await bcrypt.hash(u.password, 10);
+      const user = new User({
+        ...u,
+        email: u.email.toLowerCase(),
+        password: hashedPassword,
+      });
+      user.calculateLeaderboardScore();
+      await user.save();
+      console.log(`  + Created ${u.role}: ${u.email}`);
+    }
   }
 
-  console.log('\nSeeding mentee...');
-  const mentee = await upsertUser(menteeData, 'mentee');
+  const sarah = await User.findOne({ email: 'mentor.sarah@ymentor.com' });
+  const jordan = await User.findOne({ email: 'student.jordan@ymentor.com' });
 
-  const alex = mentors.find((m) => m.email === 'alex.rivera@ymentor.demo');
-
-  console.log('\nSeeding sample workspace + note + booking (Jordan <-> Alex)...');
-  let workspace = await Workspace.findOne({ mentorId: alex._id, menteeId: mentee._id });
-  if (!workspace) {
-    workspace = await Workspace.create({
-      mentorId: alex._id,
-      menteeId: mentee._id,
-      topic: 'Flutter State Architecture & Clean Code Mentorship',
-    });
-    console.log('  - workspace created');
-  } else {
-    console.log('  - workspace already exists, skipping');
+  if (sarah && jordan) {
+    let ws = await Workspace.findOne({ mentorId: sarah._id, menteeId: jordan._id });
+    if (!ws) {
+      ws = await Workspace.create({
+        mentorId: sarah._id,
+        menteeId: jordan._id,
+        topic: 'AI Systems Architecture & Flutter Mentorship',
+      });
+      console.log('  + Created baseline workspace');
+    }
   }
 
-  const existingNote = await Note.findOne({ workspaceId: workspace._id });
-  if (!existingNote) {
-    await Note.create({
-      workspaceId: workspace._id,
-      title: 'Assignment 01: Riverpod 2.0 vs Bloc State Patterns.pdf',
-      description: 'Deconstruct asynchronous state, cached providers, and state restoration on Android lifecycle changes.',
-      dueDate: 'This Sunday, 11:59 PM',
-      pdfUrl: '/uploads/sample-flutter-architecture.pdf',
-      uploadedBy: alex._id,
-      isCompleted: false,
-      comments: [
-        {
-          senderId: alex._id,
-          senderName: 'Alex Rivera (Mentor)',
-          message: 'Review Section 3 on NotifierProvider family disposals before submitting your repository link!',
-        },
-        {
-          senderId: mentee._id,
-          senderName: 'Jordan Cole (Mentee)',
-          message: 'Understood Alex! Should I create a mock repository test suite with mocktail as well?',
-        },
-      ],
-    });
-    console.log('  - note + comments created');
-  } else {
-    console.log('  - note already exists, skipping');
-  }
-
-  const existingBooking = await Booking.findOne({ mentorId: alex._id, menteeId: mentee._id });
-  if (!existingBooking) {
-    await Booking.create({
-      menteeId: mentee._id,
-      mentorId: alex._id,
-      durationMinutes: 60,
-      scheduledTime: new Date(Date.now() + 3600000 * 18),
-      meetingUrl: 'https://meet.google.com/ymentor-alex-rivera',
-      financials: {
-        grossAmount: 20.0,
-        platformCommission20Percent: 4.0,
-        mentorNetPayout80Percent: 16.0,
-        escrowStatus: 'HELD',
-      },
-      status: 'CONFIRMED',
-    });
-    console.log('  - booking created');
-  } else {
-    console.log('  - booking already exists, skipping');
-  }
-
-  console.log('\nDone. Demo login: jordan.cole@gmail.com / password123');
+  console.log('\n✅ Auto-seed baseline complete.');
+  console.log('Baseline accounts:');
+  console.log('  1. Admin:  admin@ymentor.com / admin123');
+  console.log('  2. Mentor: mentor.sarah@ymentor.com / mentor123');
+  console.log('  3. Mentee: student.jordan@ymentor.com / student123');
   await mongoose.disconnect();
   process.exit(0);
 }
 
 run().catch((err) => {
-  console.error('Seed failed:', err);
+  console.error('Seed error:', err);
   process.exit(1);
 });

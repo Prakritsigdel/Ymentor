@@ -27,10 +27,10 @@ class PendingBooking {
       };
 
   factory PendingBooking.fromJson(Map<String, dynamic> json) => PendingBooking(
-        mentorId: json['mentorId'],
-        durationMinutes: json['durationMinutes'],
-        price: (json['price'] as num).toDouble(),
-        slotId: json['slotId'],
+        mentorId: json['mentorId']?.toString() ?? '',
+        durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 30,
+        price: (json['price'] as num?)?.toDouble() ?? 0.0,
+        slotId: json['slotId']?.toString(),
       );
 }
 
@@ -43,51 +43,76 @@ class AuthProvider extends ChangeNotifier {
   AppUser? get user => _user;
   String? get token => _token;
   bool get isLoading => _isLoading;
-  bool get isLoggedIn => _user != null;
+  bool get isLoggedIn => _user != null && _token != null && _token!.isNotEmpty;
   PendingBooking? get pendingBooking => _pendingBooking;
+
+  // Role & status conveniences
+  bool get isAdmin => _user?.isAdmin ?? false;
+  bool get isMentor => _user?.isMentor ?? false;
+  bool get isMentee => _user?.isMentee ?? false;
+  bool get isOnboarded => _user?.isOnboarded ?? false;
+  bool get isSuspended => _user?.isSuspended ?? false;
 
   static const _kToken = 'ymentor_token';
   static const _kUser = 'ymentor_user';
   static const _kPending = 'ymentor_pending_booking';
 
   AuthProvider() {
+    // Configure API service 401 interceptor callback
+    ApiService.onUnauthorized = () {
+      logout();
+    };
     _restore();
   }
 
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_kToken);
-    final userJson = prefs.getString(_kUser);
-    if (token != null && userJson != null) {
-      _token = token;
-      _user = AppUser.fromJson(jsonDecode(userJson));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_kToken);
+      final userJson = prefs.getString(_kUser);
+
+      if (token != null && userJson != null) {
+        _token = token;
+        ApiService.authToken = token;
+        final decoded = jsonDecode(userJson);
+        if (decoded is Map<String, dynamic>) {
+          _user = AppUser.fromJson(decoded);
+        }
+      }
+
+      final pendingJson = prefs.getString(_kPending);
+      if (pendingJson != null) {
+        _pendingBooking = PendingBooking.fromJson(jsonDecode(pendingJson));
+      }
+    } catch (e) {
+      debugPrint('AuthProvider restore error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    final pendingJson = prefs.getString(_kPending);
-    if (pendingJson != null) {
-      _pendingBooking = PendingBooking.fromJson(jsonDecode(pendingJson));
-    }
-    _isLoading = false;
-    notifyListeners();
   }
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     if (_token != null && _user != null) {
+      ApiService.authToken = _token;
       await prefs.setString(_kToken, _token!);
-      await prefs.setString(_kUser, jsonEncode({
-            '_id': _user!.id,
-            'name': _user!.name,
-            'email': _user!.email,
-            'role': _user!.role,
-            'walletBalance': _user!.walletBalance,
-          }));
+      await prefs.setString(_kUser, jsonEncode(_user!.toJson()));
+    } else {
+      ApiService.authToken = null;
+      await prefs.remove(_kToken);
+      await prefs.remove(_kUser);
     }
   }
 
   Future<void> login(String email, String password) async {
     final data = await ApiService.login(email: email, password: password);
-    _token = data['token'];
-    _user = AppUser.fromJson(data['user']);
+    _token = data['token']?.toString();
+    ApiService.authToken = _token;
+
+    final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+    _user = AppUser.fromJson(userMap);
+
     await _persist();
     notifyListeners();
   }
@@ -97,38 +122,100 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
     required String role,
+    String? faculty,
+    List<String> skillsOrInterests = const [],
+    String? title,
+    String? bio,
+    double? hourlyRate,
   }) async {
-    final data = await ApiService.register(name: name, email: email, password: password, role: role);
-    _token = data['token'];
-    _user = AppUser.fromJson(data['user']);
+    final data = await ApiService.register(
+      name: name,
+      email: email,
+      password: password,
+      role: role,
+      faculty: faculty,
+      skillsOrInterests: skillsOrInterests,
+      title: title,
+      bio: bio,
+      hourlyRate: hourlyRate,
+    );
+    _token = data['token']?.toString();
+    ApiService.authToken = _token;
+
+    final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+    _user = AppUser.fromJson(userMap);
+
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<void> completeOnboarding({
+    required String faculty,
+    required List<String> skillsOrInterests,
+    String? title,
+    String? bio,
+    double? hourlyRate,
+  }) async {
+    final updatedUser = await ApiService.completeOnboarding(
+      faculty: faculty,
+      skillsOrInterests: skillsOrInterests,
+      title: title,
+      bio: bio,
+      hourlyRate: hourlyRate,
+    );
+    _user = updatedUser;
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<void> updateProfile({
+    String? name,
+    String? bio,
+    String? title,
+    String? faculty,
+    List<String>? skillsOrInterests,
+    double? hourlyRate,
+    PricingTiers? pricingTiers,
+    String? meetingUrl,
+  }) async {
+    final updated = await ApiService.updateProfile(
+      name: name,
+      bio: bio,
+      title: title,
+      faculty: faculty,
+      skillsOrInterests: skillsOrInterests,
+      hourlyRate: hourlyRate,
+      pricingTiers: pricingTiers,
+      meetingUrl: meetingUrl,
+    );
+    _user = updated;
     await _persist();
     notifyListeners();
   }
 
   Future<void> refreshUser() async {
-    if (_user == null) return;
+    if (_user == null || _token == null) return;
     try {
-      final mentors = await ApiService.getMentors();
-      final match = mentors.where((m) => m.id == _user!.id);
-      if (match.isNotEmpty) {
-        _user = match.first;
-        notifyListeners();
-      }
+      final me = await ApiService.getMe();
+      _user = me;
+      await _persist();
+      notifyListeners();
     } catch (_) {
-      // Non-fatal: keep cached user if refresh fails.
+      // Non-fatal: keep cached user if network fails.
     }
   }
 
   Future<void> logout() async {
     _user = null;
     _token = null;
+    ApiService.authToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kToken);
     await prefs.remove(_kUser);
     notifyListeners();
   }
 
-  Future<void> setPendingBooking(PendingBooking booking) async {
+  Future<void> savePendingBooking(PendingBooking booking) async {
     _pendingBooking = booking;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kPending, jsonEncode(booking.toJson()));

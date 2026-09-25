@@ -30,10 +30,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
       setState(() => _loading = false);
       return;
     }
+
     setState(() => _loading = true);
     try {
       final bookings = await ApiService.getUserBookings(user.id);
       bookings.sort((a, b) => b.scheduledTime.compareTo(a.scheduledTime));
+      if (!mounted) return;
       setState(() => _bookings = bookings);
     } catch (_) {
       // keep prior state on failure
@@ -44,7 +46,16 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   Future<void> _joinCall(Booking booking) async {
     final uri = Uri.tryParse(booking.meetingUrl);
-    if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open video call: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _markComplete(Booking booking) async {
@@ -56,33 +67,41 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.surface,
-          title: const Text('Complete session & release escrow'),
+          title: const Text('Complete Session & Release Escrow'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Rate your mentor', style: TextStyle(color: AppColors.textSecondary)),
-              const SizedBox(height: 8),
+              const Text(
+                'Rate your mentor to release the 80% payout from escrow:',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (i) {
                   final filled = i < rating;
                   return IconButton(
-                    icon: Icon(filled ? Icons.star : Icons.star_border, color: AppColors.star),
+                    icon: Icon(filled ? Icons.star : Icons.star_border, color: AppColors.star, size: 28),
                     onPressed: () => setDialogState(() => rating = (i + 1).toDouble()),
                   );
                 }),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               TextField(
                 controller: controller,
-                decoration: const InputDecoration(labelText: 'Review note'),
+                decoration: const InputDecoration(labelText: 'Review & Feedback Note'),
                 maxLines: 2,
               ),
             ],
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Release Funds')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.mint),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Release Escrow Funds'),
+            ),
           ],
         ),
       ),
@@ -92,11 +111,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
     try {
       await ApiService.completeBooking(booking.id, rating: rating, reviewNote: controller.text);
+      if (!mounted) return;
       await context.read<AuthProvider>().refreshUser();
       _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escrow released! Mentor has been paid.')),
+        const SnackBar(content: Text('Session completed! Escrow funds released to mentor.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -109,15 +129,38 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    if (!auth.isLoggedIn) {
-      return const Center(child: Text('Log in to see your sessions.', style: TextStyle(color: AppColors.textSecondary)));
-    }
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_bookings.isEmpty) {
-      return const Center(child: Text('No sessions booked yet.', style: TextStyle(color: AppColors.textSecondary)));
+    final user = auth.user;
+
+    if (!auth.isLoggedIn || user == null) {
+      return const Center(
+        child: Text('Log in to see your scheduled sessions.', style: TextStyle(color: AppColors.textSecondary)),
+      );
     }
 
-    final isMentee = auth.user!.role == 'mentee';
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    if (_bookings.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.all(32),
+          children: const [
+            SizedBox(height: 80),
+            Icon(Icons.video_camera_front_outlined, size: 54, color: AppColors.textSecondary),
+            SizedBox(height: 16),
+            Center(
+              child: Text(
+                'No sessions booked yet.\nDiscover mentors and book a 1-on-1 call to start learning.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final isMentee = user.role == 'mentee';
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -126,7 +169,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         itemCount: _bookings.length,
         itemBuilder: (context, i) {
           final b = _bookings[i];
-          final held = b.financials.escrowStatus == 'HELD';
+          final isHeld = b.isHeld;
           final otherPartyName = isMentee ? (b.mentorName ?? 'Mentor') : (b.menteeName ?? 'Mentee');
 
           return Card(
@@ -143,27 +186,35 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: (b.status == 'COMPLETED' ? AppColors.mint : AppColors.cyan).withOpacity(0.15),
+                          color: (b.status == 'COMPLETED' ? AppColors.mint : AppColors.cyan).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(b.status,
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: b.status == 'COMPLETED' ? AppColors.mint : AppColors.cyan,
-                                fontWeight: FontWeight.bold)),
+                        child: Text(
+                          b.status,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: b.status == 'COMPLETED' ? AppColors.mint : AppColors.cyan,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('${b.durationMinutes} min · ${DateFormat('EEE, MMM d · h:mm a').format(b.scheduledTime)}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    '${b.durationMinutes} min · ${DateFormat('EEE, MMM d · h:mm a').format(b.scheduledTime)}',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Icon(held ? Icons.lock_clock : Icons.lock_open, size: 16, color: held ? AppColors.star : AppColors.mint),
+                      Icon(isHeld ? Icons.lock_clock : Icons.lock_open,
+                          size: 16, color: isHeld ? AppColors.star : AppColors.mint),
                       const SizedBox(width: 6),
-                      Text('Escrow: ${b.financials.escrowStatus} · \$${b.financials.grossAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 13)),
+                      Text(
+                        'Escrow: ${b.escrowStatus.toUpperCase()} · \$${b.financials.grossAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -176,13 +227,14 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                           label: const Text('Join Call'),
                         ),
                       ),
-                      if (held) ...[
+                      if (isHeld && isMentee) ...[
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.mint),
                             onPressed: () => _markComplete(b),
                             icon: const Icon(Icons.check_circle, size: 18),
-                            label: const Text('Complete'),
+                            label: const Text('Complete & Pay'),
                           ),
                         ),
                       ],
