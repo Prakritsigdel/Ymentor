@@ -176,199 +176,204 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
 
     final isPendingApproval = user.isPendingApproval;
 
-    return RefreshIndicator(
-      onRefresh: _loadDashboard,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Pending Approval Warning Banner
-          if (isPendingApproval) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.star.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.star.withValues(alpha: 0.5)),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.pending_actions, color: AppColors.star, size: 24),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Your mentor account is currently awaiting Admin Approval. You can prepare assignments and configure your pricing in the meantime.',
-                      style: TextStyle(color: AppColors.star, fontSize: 13),
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: RefreshIndicator(
+        onRefresh: _loadDashboard,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Pending Approval Warning Banner
+            if (isPendingApproval) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.star.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.star.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.pending_actions, color: AppColors.star, size: 24),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Your mentor account is currently awaiting Admin Approval. You can prepare assignments and configure your pricing in the meantime.',
+                        style: TextStyle(color: AppColors.star, fontSize: 13),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Financial Summary Cards: Virtual Wallet & Pending Escrow
+            Row(
+              children: [
+                Expanded(child: _statCard('Virtual Wallet Balance', '\$${user.walletBalance.toStringAsFixed(2)}', AppColors.mint, Icons.account_balance_wallet)),
+                const SizedBox(width: 10),
+                Expanded(child: _statCard('Pending Escrow Balance', '\$${user.pendingEscrow.toStringAsFixed(2)}', AppColors.star, Icons.lock_clock)),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Rating and Sessions Cards
+            Row(
+              children: [
+                Expanded(child: _statCard('Sessions Completed', '${user.totalSessions}', AppColors.cyan, Icons.people)),
+                const SizedBox(width: 10),
+                Expanded(child: _statCard('Rating Avg', user.ratingAvg.toStringAsFixed(2), AppColors.verified, Icons.star)),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Multer PDF Assignment Uploader
+            const Text('Upload Classroom PDF Assignment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_workspaces.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'No active student workspaces yet. Workspaces are automatically created when a student books a session with you.',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        ),
+                      )
+                    else ...[
+                      DropdownButtonFormField<Workspace>(
+                        initialValue: _uploadTarget,
+                        dropdownColor: AppColors.surface,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Student Workspace',
+                          prefixIcon: Icon(Icons.school, color: AppColors.textSecondary),
+                        ),
+                        items: _workspaces
+                            .map((w) => DropdownMenuItem(
+                                  value: w,
+                                  child: Text(w.topic, overflow: TextOverflow.ellipsis, maxLines: 1),
+                                ))
+                            .toList(),
+                        onChanged: (w) => setState(() => _uploadTarget = w),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _titleCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Assignment Title',
+                          hintText: 'e.g. Week 1: Clean Architecture Refactor.pdf',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _descriptionCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Instructions / Description (Optional)',
+                          hintText: 'e.g. Complete exercises in section 2...',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _dueDateCtrl,
+                        decoration: const InputDecoration(labelText: 'Due Date'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _pickPdf,
+                        icon: const Icon(Icons.attach_file),
+                        label: Text(
+                          _pickedPdf == null
+                              ? 'Attach PDF File'
+                              : 'Selected: ${_pickedPdf!.path.split(Platform.pathSeparator).last}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _uploading ? null : _uploadAssignment,
+                        icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                        label: _uploading
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Upload PDF to Classroom'),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-          ],
 
-          // Financial Summary Cards: Virtual Wallet & Pending Escrow
-          Row(
-            children: [
-              Expanded(child: _statCard('Virtual Wallet Balance', '\$${user.walletBalance.toStringAsFixed(2)}', AppColors.mint, Icons.account_balance_wallet)),
-              const SizedBox(width: 10),
-              Expanded(child: _statCard('Pending Escrow Balance', '\$${user.pendingEscrow.toStringAsFixed(2)}', AppColors.star, Icons.lock_clock)),
-            ],
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 24),
 
-          // Rating and Sessions Cards
-          Row(
-            children: [
-              Expanded(child: _statCard('Sessions Completed', '${user.totalSessions}', AppColors.cyan, Icons.people)),
-              const SizedBox(width: 10),
-              Expanded(child: _statCard('Rating Avg', user.ratingAvg.toStringAsFixed(2), AppColors.verified, Icons.star)),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Multer PDF Assignment Uploader
-          const Text('Upload Classroom PDF Assignment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_workspaces.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'No active student workspaces yet. Workspaces are automatically created when a student books a session with you.',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                      ),
-                    )
-                  else ...[
-                    DropdownButtonFormField<Workspace>(
-                      initialValue: _uploadTarget,
-                      dropdownColor: AppColors.surface,
-                      decoration: const InputDecoration(
-                        labelText: 'Select Student Workspace',
-                        prefixIcon: Icon(Icons.school, color: AppColors.textSecondary),
-                      ),
-                      items: _workspaces
-                          .map((w) => DropdownMenuItem(
-                                value: w,
-                                child: Text(w.topic, overflow: TextOverflow.ellipsis),
-                              ))
-                          .toList(),
-                      onChanged: (w) => setState(() => _uploadTarget = w),
+            // Tier Pricing Editor & Meeting URL
+            const Text('Session Tier Pricing & Meeting Link', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _tier30Ctrl,
+                            decoration: const InputDecoration(labelText: '30m (\$)', prefixText: '\$'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _tier60Ctrl,
+                            decoration: const InputDecoration(labelText: '60m (\$)', prefixText: '\$'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _tier120Ctrl,
+                            decoration: const InputDecoration(labelText: '120m (\$)', prefixText: '\$'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     TextField(
-                      controller: _titleCtrl,
+                      controller: _meetingUrlCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Assignment Title',
-                        hintText: 'e.g. Week 1: Clean Architecture Refactor.pdf',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _descriptionCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Instructions / Description (Optional)',
-                        hintText: 'e.g. Complete exercises in section 2...',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _dueDateCtrl,
-                      decoration: const InputDecoration(labelText: 'Due Date'),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _pickPdf,
-                      icon: const Icon(Icons.attach_file),
-                      label: Text(
-                        _pickedPdf == null
-                            ? 'Attach PDF File'
-                            : 'Selected: ${_pickedPdf!.path.split(Platform.pathSeparator).last}',
-                        overflow: TextOverflow.ellipsis,
+                        labelText: 'Google Meet / Zoom URL',
+                        prefixIcon: Icon(Icons.videocam_outlined, color: AppColors.textSecondary),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _uploading ? null : _uploadAssignment,
-                      icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                      label: _uploading
+                    ElevatedButton(
+                      onPressed: _savingConfig ? null : _saveConfig,
+                      child: _savingConfig
                           ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Upload PDF to Classroom'),
+                          : const Text('Update Pricing & Meeting URL'),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Tier Pricing Editor & Meeting URL
-          const Text('Session Tier Pricing & Meeting Link', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _tier30Ctrl,
-                          decoration: const InputDecoration(labelText: '30m (\$)', prefixText: '\$'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _tier60Ctrl,
-                          decoration: const InputDecoration(labelText: '60m (\$)', prefixText: '\$'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _tier120Ctrl,
-                          decoration: const InputDecoration(labelText: '120m (\$)', prefixText: '\$'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _meetingUrlCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Google Meet / Zoom URL',
-                      prefixIcon: Icon(Icons.videocam_outlined, color: AppColors.textSecondary),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _savingConfig ? null : _saveConfig,
-                    child: _savingConfig
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Update Pricing & Meeting URL'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }

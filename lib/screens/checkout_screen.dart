@@ -64,63 +64,67 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Checkout & Escrow Hold')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('Session Order Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _row('Session duration', '${widget.durationMinutes} minutes'),
-                  const SizedBox(height: 10),
-                  _row('Gross session fee', '\$${widget.price.toStringAsFixed(2)}'),
-                  const SizedBox(height: 10),
-                  _row('Platform protection fee (escrow)', '\$${_platformFee.toStringAsFixed(2)}',
-                      color: AppColors.textSecondary),
-                  const Divider(height: 24, color: AppColors.border),
-                  _row('Mentor net payout (held in escrow)', '\$${_mentorPayout.toStringAsFixed(2)}',
-                      color: AppColors.mint, bold: true),
-                  const Divider(height: 24, color: AppColors.border),
-                  _row('Total charged today', '\$${widget.price.toStringAsFixed(2)}', bold: true),
-                ],
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Text('Session Order Breakdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 14),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _row('Session duration', '${widget.durationMinutes} minutes'),
+                    const SizedBox(height: 10),
+                    _row('Gross session fee', '\$${widget.price.toStringAsFixed(2)}'),
+                    const SizedBox(height: 10),
+                    _row('Platform protection fee (escrow)', '\$${_platformFee.toStringAsFixed(2)}',
+                        color: AppColors.textSecondary),
+                    const Divider(height: 24, color: AppColors.border),
+                    _row('Mentor net payout (held in escrow)', '\$${_mentorPayout.toStringAsFixed(2)}',
+                        color: AppColors.mint, bold: true),
+                    const Divider(height: 24, color: AppColors.border),
+                    _row('Total charged today', '\$${widget.price.toStringAsFixed(2)}', bold: true),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text('Sandbox Escrow Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          const _DemoCardForm(),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+            const SizedBox(height: 20),
+            const Text('Sandbox Escrow Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const _DemoCardForm(),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                ),
+                child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
               ),
-              child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+            ],
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _processing ? null : _confirmPayment,
+              child: _processing
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text('Confirm Escrow Payment · \$${widget.price.toStringAsFixed(2)}'),
+            ),
+            const SizedBox(height: 10),
+            const Center(
+              child: Text(
+                'Funds are securely held in escrow until the session is completed and reviewed.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _processing ? null : _confirmPayment,
-            child: _processing
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text('Confirm Escrow Payment · \$${widget.price.toStringAsFixed(2)}'),
-          ),
-          const SizedBox(height: 10),
-          const Center(
-            child: Text(
-              'Funds are securely held in escrow until the session is completed and reviewed.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

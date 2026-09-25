@@ -232,9 +232,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
                 children: [
                   const Icon(Icons.auto_awesome, color: AppColors.mint, size: 14),
                   const SizedBox(width: 6),
-                  Text(
-                    'Recommended for your interests: ${studentInterests.join(', ')}',
-                    style: const TextStyle(color: AppColors.mint, fontSize: 11, fontWeight: FontWeight.w500),
+                  Flexible(
+                    child: Text(
+                      'Recommended for your interests: ${studentInterests.join(', ')}',
+                      style: const TextStyle(color: AppColors.mint, fontSize: 11, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),

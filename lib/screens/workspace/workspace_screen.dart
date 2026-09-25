@@ -141,83 +141,96 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     if (_loadingWorkspaces) return const Center(child: CircularProgressIndicator());
 
     if (_workspaces.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _loadWorkspaces,
-        child: ListView(
-          padding: const EdgeInsets.all(32),
-          children: const [
-            SizedBox(height: 80),
-            Icon(Icons.folder_open, size: 54, color: AppColors.textSecondary),
-            SizedBox(height: 16),
-            Center(
-              child: Text(
-                'No active classroom workspaces yet.\nBook a mentorship session to automatically launch your shared workspace.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+      return SafeArea(
+        top: true,
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _loadWorkspaces,
+          child: ListView(
+            padding: const EdgeInsets.all(32),
+            children: const [
+              SizedBox(height: 80),
+              Icon(Icons.folder_open, size: 54, color: AppColors.textSecondary),
+              SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'No active classroom workspaces yet.\nBook a mentorship session to automatically launch your shared workspace.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await _loadWorkspaces();
-        await _loadNotes();
-      },
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: DropdownButtonFormField<Workspace>(
-              initialValue: _selected,
-              dropdownColor: AppColors.surface,
-              decoration: const InputDecoration(
-                labelText: 'Active Classroom Workspace',
-                prefixIcon: Icon(Icons.school_outlined, color: AppColors.mint),
-              ),
-              items: _workspaces
-                  .map((w) => DropdownMenuItem(
-                        value: w,
-                        child: Text(w.topic, overflow: TextOverflow.ellipsis),
-                      ))
-                  .toList(),
-              onChanged: (w) {
-                setState(() => _selected = w);
-                _loadNotes();
-              },
-            ),
-          ),
-          Expanded(
-            child: _loadingNotes
-                ? const Center(child: CircularProgressIndicator())
-                : _notes.isEmpty
-                    ? ListView(
-                        children: const [
-                          SizedBox(height: 80),
-                          Icon(Icons.assignment_outlined, size: 48, color: AppColors.textSecondary),
-                          SizedBox(height: 12),
-                          Center(
-                            child: Text(
-                              'No assignments attached to this workspace yet.',
-                              style: TextStyle(color: AppColors.textSecondary),
-                            ),
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: RefreshIndicator(
+        onRefresh: () async {
+          await _loadWorkspaces();
+          await _loadNotes();
+        },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: DropdownButtonFormField<Workspace>(
+                initialValue: _selected,
+                dropdownColor: AppColors.surface,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Active Classroom Workspace',
+                  prefixIcon: Icon(Icons.school_outlined, color: AppColors.mint),
+                ),
+                items: _workspaces
+                    .map((w) => DropdownMenuItem(
+                          value: w,
+                          child: Text(
+                            w.topic,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                        ],
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: _notes.length,
-                        itemBuilder: (context, i) => _NoteCard(
-                          note: _notes[i],
-                          onOpenPdf: () => _openPdf(_notes[i].pdfUrl),
-                          onToggle: () => _toggleNote(_notes[i]),
-                          onComment: () => _addComment(_notes[i]),
+                        ))
+                    .toList(),
+                onChanged: (w) {
+                  setState(() => _selected = w);
+                  _loadNotes();
+                },
+              ),
+            ),
+            Expanded(
+              child: _loadingNotes
+                  ? const Center(child: CircularProgressIndicator())
+                  : _notes.isEmpty
+                      ? ListView(
+                          children: const [
+                            SizedBox(height: 80),
+                            Icon(Icons.assignment_outlined, size: 48, color: AppColors.textSecondary),
+                            SizedBox(height: 12),
+                            Center(
+                              child: Text(
+                                'No assignments attached to this workspace yet.',
+                                style: TextStyle(color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          itemCount: _notes.length,
+                          itemBuilder: (context, i) => _NoteCard(
+                            note: _notes[i],
+                            onOpenPdf: () => _openPdf(_notes[i].pdfUrl),
+                            onToggle: () => _toggleNote(_notes[i]),
+                            onComment: () => _addComment(_notes[i]),
+                          ),
                         ),
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
