@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
+import '../config/api_config.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
@@ -70,7 +71,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Could not reach Ymentor server at localhost:3000. Is the backend running?');
+      setState(() => _error = 'Could not reach Ymentor server at ${ApiConfig.baseUrl}. Is the backend running?');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

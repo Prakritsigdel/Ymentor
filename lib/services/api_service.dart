@@ -85,9 +85,9 @@ class ApiService {
     try {
       return await call();
     } on SocketException {
-      throw ApiException('Cannot reach Ymentor server at localhost:3000. Is the backend running?');
+      throw ApiException('Cannot reach Ymentor server at ${ApiConfig.baseUrl}. Is the backend running?');
     } on http.ClientException {
-      throw ApiException('Network connection failed. Please check your internet or localhost connection.');
+      throw ApiException('Network connection failed. Please check your network connection to ${ApiConfig.baseUrl}.');
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException(e.toString());

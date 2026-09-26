@@ -16,7 +16,7 @@ class WorkspaceScreen extends StatefulWidget {
 
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   List<Workspace> _workspaces = [];
-  Workspace? _selected;
+  String? _selectedWorkspaceId;
   List<Note> _notes = [];
   bool _loadingWorkspaces = true;
   bool _loadingNotes = false;
@@ -39,17 +39,23 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       final ws = await ApiService.getUserWorkspaces(user.id);
       if (!mounted) return;
 
+      // Deduplicate incoming workspaces by ID
+      final seenIds = <String>{};
+      final uniqueWs = ws.where((w) => seenIds.add(w.id)).toList();
+
       setState(() {
-        _workspaces = ws;
-        if (_selected == null && ws.isNotEmpty) {
-          _selected = ws.first;
-        } else if (_selected != null) {
-          final exists = ws.any((w) => w.id == _selected!.id);
-          if (!exists && ws.isNotEmpty) _selected = ws.first;
+        _workspaces = uniqueWs;
+        if (uniqueWs.isNotEmpty) {
+          final exists = uniqueWs.any((w) => w.id == _selectedWorkspaceId);
+          if (!exists) {
+            _selectedWorkspaceId = uniqueWs.first.id;
+          }
+        } else {
+          _selectedWorkspaceId = null;
         }
       });
 
-      if (_selected != null) await _loadNotes();
+      if (_selectedWorkspaceId != null) await _loadNotes();
     } catch (_) {
       // ignore
     } finally {
@@ -58,10 +64,10 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   }
 
   Future<void> _loadNotes() async {
-    if (_selected == null) return;
+    if (_selectedWorkspaceId == null) return;
     setState(() => _loadingNotes = true);
     try {
-      final notes = await ApiService.getWorkspaceNotes(_selected!.id);
+      final notes = await ApiService.getWorkspaceNotes(_selectedWorkspaceId!);
       if (!mounted) return;
       setState(() => _notes = notes);
     } catch (_) {
@@ -177,8 +183,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: DropdownButtonFormField<Workspace>(
-                initialValue: _selected,
+              child: DropdownButtonFormField<String>(
+                key: ValueKey(_selectedWorkspaceId),
+                initialValue: _workspaces.any((w) => w.id == _selectedWorkspaceId)
+                    ? _selectedWorkspaceId
+                    : null,
                 dropdownColor: AppColors.surface,
                 isExpanded: true,
                 decoration: const InputDecoration(
@@ -186,8 +195,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                   prefixIcon: Icon(Icons.school_outlined, color: AppColors.mint),
                 ),
                 items: _workspaces
-                    .map((w) => DropdownMenuItem(
-                          value: w,
+                    .map((w) => DropdownMenuItem<String>(
+                          value: w.id,
                           child: Text(
                             w.topic,
                             overflow: TextOverflow.ellipsis,
@@ -195,9 +204,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                           ),
                         ))
                     .toList(),
-                onChanged: (w) {
-                  setState(() => _selected = w);
-                  _loadNotes();
+                onChanged: (newId) {
+                  if (newId != null) {
+                    setState(() => _selectedWorkspaceId = newId);
+                    _loadNotes();
+                  }
                 },
               ),
             ),

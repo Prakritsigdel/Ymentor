@@ -17,7 +17,7 @@ class MentorDashboardScreen extends StatefulWidget {
 
 class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
   List<Workspace> _workspaces = [];
-  Workspace? _uploadTarget;
+  String? _selectedWorkspaceId;
   final _titleCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   final _dueDateCtrl = TextEditingController(text: 'Next Sunday, 11:59 PM');
@@ -69,13 +69,20 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
     try {
       final ws = await ApiService.getUserWorkspaces(user.id);
       if (!mounted) return;
+
+      // Deduplicate incoming workspaces by ID
+      final seenIds = <String>{};
+      final uniqueWs = ws.where((w) => seenIds.add(w.id)).toList();
+
       setState(() {
-        _workspaces = ws;
-        if (_uploadTarget == null && ws.isNotEmpty) {
-          _uploadTarget = ws.first;
-        } else if (_uploadTarget != null) {
-          final exists = ws.any((w) => w.id == _uploadTarget!.id);
-          if (!exists && ws.isNotEmpty) _uploadTarget = ws.first;
+        _workspaces = uniqueWs;
+        if (uniqueWs.isNotEmpty) {
+          final exists = uniqueWs.any((w) => w.id == _selectedWorkspaceId);
+          if (!exists) {
+            _selectedWorkspaceId = uniqueWs.first.id;
+          }
+        } else {
+          _selectedWorkspaceId = null;
         }
       });
     } catch (_) {}
@@ -90,7 +97,7 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
 
   Future<void> _uploadAssignment() async {
     final user = context.read<AuthProvider>().user;
-    if (user == null || _uploadTarget == null || _titleCtrl.text.trim().isEmpty) {
+    if (user == null || _selectedWorkspaceId == null || _titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a student workspace and enter an assignment title.')),
       );
@@ -100,7 +107,7 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
     setState(() => _uploading = true);
     try {
       await ApiService.uploadNote(
-        workspaceId: _uploadTarget!.id,
+        workspaceId: _selectedWorkspaceId!,
         uploadedBy: user.id,
         title: _titleCtrl.text.trim(),
         description: _descriptionCtrl.text.trim().isNotEmpty ? _descriptionCtrl.text.trim() : null,
@@ -252,8 +259,11 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                         ),
                       )
                     else ...[
-                      DropdownButtonFormField<Workspace>(
-                        initialValue: _uploadTarget,
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(_selectedWorkspaceId),
+                        initialValue: _workspaces.any((w) => w.id == _selectedWorkspaceId)
+                            ? _selectedWorkspaceId
+                            : null,
                         dropdownColor: AppColors.surface,
                         isExpanded: true,
                         decoration: const InputDecoration(
@@ -261,12 +271,16 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                           prefixIcon: Icon(Icons.school, color: AppColors.textSecondary),
                         ),
                         items: _workspaces
-                            .map((w) => DropdownMenuItem(
-                                  value: w,
+                            .map((w) => DropdownMenuItem<String>(
+                                  value: w.id,
                                   child: Text(w.topic, overflow: TextOverflow.ellipsis, maxLines: 1),
                                 ))
                             .toList(),
-                        onChanged: (w) => setState(() => _uploadTarget = w),
+                        onChanged: (String? newId) {
+                          if (newId != null) {
+                            setState(() => _selectedWorkspaceId = newId);
+                          }
+                        },
                       ),
                       const SizedBox(height: 12),
                       TextField(
