@@ -26,7 +26,16 @@ const { logAudit, getMemoryAuditLogs } = require('./utils/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
+const WIFI_HOST = '192.168.0.8';
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ymentor';
+const ADMIN_EMAIL = process.env.YMENTOR_ADMIN_EMAIL?.trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.YMENTOR_ADMIN_PASSWORD;
+
+if (Boolean(ADMIN_EMAIL) !== Boolean(ADMIN_PASSWORD)) {
+  throw new Error('Set both YMENTOR_ADMIN_EMAIL and YMENTOR_ADMIN_PASSWORD to provision an administrator.');
+}
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -59,7 +68,7 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -83,56 +92,33 @@ function computeScore(ratingAvg, totalSessions) {
 }
 
 /**
- * AUTO-SEED LOGIC:
- * On boot, auto-create ONLY these 3 baseline demo accounts if they do not exist:
- * 1. Admin: admin@ymentor.com / admin123
- * 2. Mentor: mentor.sarah@ymentor.com / mentor123
- * 3. Mentee: student.jordan@ymentor.com / student123
- * Do NOT generate fake mentors. All other users must be dynamically registered.
+ * On boot, create or migrate the two baseline accounts used for local setup.
+ * Other users must be registered through the application.
  */
 async function autoSeedBaselineAccounts() {
   const seedUsers = [
     {
-      _id: 'user-admin-seed',
-      name: 'System Administrator',
-      email: 'admin@ymentor.com',
-      password: 'admin123',
-      role: 'admin',
-      status: 'active',
-      isOnboarded: true,
-      headline: 'Platform Arbiter & Admin',
-      bio: 'Ymentor Lead Administrator managing verification, escrow disputes, and platform health.',
-      faculty: 'System Administration',
-      skillsOrInterests: ['System Administration', 'Compliance', 'Security'],
-      hourlyRate: 0,
-      wallet: { balance: 500.0, pendingEscrow: 0.0 },
-      walletBalance: 500.0,
-      isIdentityVerified: true,
-      isSkillVerified: true,
-    },
-    {
       _id: 'user-mentor-seed',
-      name: 'Sarah Connor',
-      email: 'mentor.sarah@ymentor.com',
-      password: 'mentor123',
+      legacyEmail: 'mentor.sarah@ymentor.com',
+      name: 'Alex Morgan',
+      email: 'alex.morgan@ymentor.com',
+      password: 'AlexMentor!Ymentor2026',
       role: 'mentor',
       status: 'active',
       isOnboarded: true,
-      title: 'Senior AI Engineer',
+      title: 'Senior Engineer',
       hourlyRate: 20,
       skillsOrInterests: ['AI', 'Python', 'Flutter'],
-      headline: 'Senior AI Engineer & Tech Lead',
-      bio: 'Senior AI Engineer specializing in production LLMs, PyTorch pipelines, and performant Flutter interfaces.',
-      faculty: 'Computer Science & AI',
+      headline: 'Senior Engineer & Technical Mentor',
+      bio: 'Senior software engineer helping teams design reliable AI and mobile applications.',
+      faculty: 'Software Engineering',
       qualifications: {
-        degree: 'M.S. in Computer Science',
-        faculty: 'Computer Science & AI',
+        degree: 'M.S. in Software Engineering',
+        faculty: 'Software Engineering',
         skills: ['AI', 'Python', 'Flutter'],
-        githubUrl: 'https://github.com/sarah-ai-ymentor',
-        linkedinUrl: 'https://linkedin.com/in/sarah-connor-ymentor',
       },
       pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
-      meetingUrl: 'https://meet.google.com/ymentor-sarah-mentor',
+      meetingUrl: 'https://meet.google.com/ymentor-alex-mentor',
       ratingAvg: 4.95,
       totalSessions: 38,
       leaderboardScore: computeScore(4.95, 38),
@@ -143,22 +129,21 @@ async function autoSeedBaselineAccounts() {
     },
     {
       _id: 'user-mentee-seed',
-      name: 'Jordan Cole',
-      email: 'student.jordan@ymentor.com',
-      password: 'student123',
+      legacyEmail: 'student.jordan@ymentor.com',
+      name: 'Sarah Chen',
+      email: 'sarah.chen@ymentor.com',
+      password: 'SarahStudent!Ymentor2026',
       role: 'mentee',
       status: 'active',
       isOnboarded: true,
       faculty: 'Computer Science',
       skillsOrInterests: ['AI', 'Python'],
-      headline: 'Aspiring Mobile & AI Software Engineer',
-      bio: 'Computer Science undergrad passionate about machine learning systems and cross-platform Flutter development.',
+      headline: 'Computer Science Student',
+      bio: 'Computer science student building skills in software engineering and applied AI.',
       qualifications: {
-        degree: 'B.S. in Computer Science (Candidate)',
+        degree: 'B.S. in Computer Science',
         faculty: 'Computer Science',
         skills: ['AI', 'Python'],
-        githubUrl: 'https://github.com/jordan-cole-student',
-        linkedinUrl: 'https://linkedin.com/in/jordan-cole',
       },
       pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
       meetingUrl: 'https://meet.google.com/abc-defg-hij',
@@ -174,11 +159,15 @@ async function autoSeedBaselineAccounts() {
 
   if (isMongoConnected) {
     for (const data of seedUsers) {
-      const exists = await User.findOne({ email: data.email.toLowerCase() });
-      if (!exists) {
-        const hashedPassword = await bcrypt.hash(data.password, 10);
+      const { legacyEmail, ...profile } = data;
+      let existing = await User.findOne({ email: profile.email.toLowerCase() });
+      if (!existing && legacyEmail) {
+        existing = await User.findOne({ email: legacyEmail.toLowerCase() });
+      }
+      if (!existing) {
+        const hashedPassword = await bcrypt.hash(profile.password, 10);
         const user = new User({
-          ...data,
+          ...profile,
           _id: new mongoose.Types.ObjectId(),
           password: hashedPassword,
         });
@@ -193,19 +182,48 @@ async function autoSeedBaselineAccounts() {
           targetId: user._id,
           details: { email: user.email, role: user.role },
         });
+      } else if (existing.email.toLowerCase() !== profile.email.toLowerCase()) {
+        existing.name = profile.name;
+        existing.email = profile.email.toLowerCase();
+        existing.password = await bcrypt.hash(profile.password, 10);
+        existing.title = profile.title || existing.title;
+        existing.headline = profile.headline;
+        existing.bio = profile.bio;
+        existing.faculty = profile.faculty;
+        existing.skillsOrInterests = profile.skillsOrInterests;
+        existing.qualifications = profile.qualifications;
+        await existing.save();
+        console.log(`🌱 [Auto-Seed] Updated baseline ${profile.role} account: ${profile.email}`);
       }
     }
 
-    // Seed one starter workspace and booking between Jordan and Sarah if none exists
-    const jordan = await User.findOne({ email: 'student.jordan@ymentor.com' });
-    const sarah = await User.findOne({ email: 'mentor.sarah@ymentor.com' });
+    if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+      const existingAdmin = await User.findOne({ email: ADMIN_EMAIL });
+      if (!existingAdmin) {
+        const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
+        const admin = new User({
+          name: 'YMentor Administrator',
+          email: ADMIN_EMAIL,
+          password: hashedPassword,
+          role: 'admin',
+          status: 'active',
+          isOnboarded: true,
+        });
+        await admin.save();
+        console.log(`🌱 [Auto-Seed] Provisioned administrator account: ${ADMIN_EMAIL}`);
+      }
+    }
 
-    if (jordan && sarah) {
-      let ws = await Workspace.findOne({ mentorId: sarah._id, menteeId: jordan._id });
+    // Seed one starter workspace and booking for the baseline mentor and mentee.
+    const mentee = await User.findOne({ email: 'sarah.chen@ymentor.com' });
+    const mentor = await User.findOne({ email: 'alex.morgan@ymentor.com' });
+
+    if (mentee && mentor) {
+      let ws = await Workspace.findOne({ mentorId: mentor._id, menteeId: mentee._id });
       if (!ws) {
         ws = await Workspace.create({
-          mentorId: sarah._id,
-          menteeId: jordan._id,
+          mentorId: mentor._id,
+          menteeId: mentee._id,
           topic: 'AI Systems Architecture & Flutter Mentorship',
         });
         console.log('🌱 [Auto-Seed] Created baseline classroom workspace');
@@ -216,33 +234,33 @@ async function autoSeedBaselineAccounts() {
           description: 'Study prompt chaining, structured outputs, and evaluation metrics.',
           dueDate: 'This Sunday, 11:59 PM',
           pdfUrl: '/uploads/sample-ai-architecture.pdf',
-          uploadedBy: sarah._id,
+          uploadedBy: mentor._id,
           isCompleted: false,
           comments: [
             {
-              senderId: sarah._id,
-              senderName: 'Sarah Connor (Mentor)',
+              senderId: mentor._id,
+              senderName: 'Alex Morgan (Mentor)',
               message: 'Check out the section on deterministic tool calling before proceeding!',
               createdAt: new Date(Date.now() - 3600000 * 3),
             },
             {
-              senderId: jordan._id,
-              senderName: 'Jordan Cole (Mentee)',
-              message: 'Thanks Sarah! Working through the schema validation exercises now.',
+              senderId: mentee._id,
+              senderName: 'Sarah Chen (Mentee)',
+              message: 'Thanks Alex. I am working through the schema validation exercises now.',
               createdAt: new Date(Date.now() - 3600000 * 1),
             },
           ],
         });
       }
 
-      let booking = await Booking.findOne({ mentorId: sarah._id, menteeId: jordan._id });
+      let booking = await Booking.findOne({ mentorId: mentor._id, menteeId: mentee._id });
       if (!booking) {
         await Booking.create({
-          menteeId: jordan._id,
-          mentorId: sarah._id,
+          menteeId: mentee._id,
+          mentorId: mentor._id,
           durationMinutes: 60,
           scheduledTime: new Date(Date.now() + 3600000 * 24),
-          meetingUrl: sarah.meetingUrl,
+          meetingUrl: mentor.meetingUrl,
           platformFee: 4.0,
           escrowStatus: 'held_in_escrow',
           financials: {
@@ -258,11 +276,14 @@ async function autoSeedBaselineAccounts() {
   } else {
     // Memory store fallback auto-seed
     if (global.ymentorMemoryStore.users.length === 0) {
-      global.ymentorMemoryStore.users = seedUsers.map((u) => ({
-        ...u,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
+      global.ymentorMemoryStore.users = seedUsers.map((user) => {
+        const { legacyEmail, ...profile } = user;
+        return {
+          ...profile,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      });
 
       const ws = {
         _id: 'workspace-seed-1',
@@ -287,15 +308,15 @@ async function autoSeedBaselineAccounts() {
           {
             _id: 'comment-seed-1',
             senderId: 'user-mentor-seed',
-            senderName: 'Sarah Connor (Mentor)',
+            senderName: 'Alex Morgan (Mentor)',
             message: 'Check out the section on deterministic tool calling before proceeding!',
             createdAt: new Date(Date.now() - 3600000 * 3),
           },
           {
             _id: 'comment-seed-2',
             senderId: 'user-mentee-seed',
-            senderName: 'Jordan Cole (Mentee)',
-            message: 'Thanks Sarah! Working through the schema validation exercises now.',
+            senderName: 'Sarah Chen (Mentee)',
+            message: 'Thanks Alex. I am working through the schema validation exercises now.',
             createdAt: new Date(Date.now() - 3600000 * 1),
           },
         ],
@@ -309,7 +330,7 @@ async function autoSeedBaselineAccounts() {
         mentorId: 'user-mentor-seed',
         durationMinutes: 60,
         scheduledTime: new Date(Date.now() + 3600000 * 24),
-        meetingUrl: 'https://meet.google.com/ymentor-sarah-mentor',
+        meetingUrl: 'https://meet.google.com/ymentor-alex-mentor',
         platformFee: 4.0,
         escrowStatus: 'held_in_escrow',
         financials: {
@@ -324,9 +345,28 @@ async function autoSeedBaselineAccounts() {
       global.ymentorMemoryStore.bookings.push(booking);
 
       console.log('🌱 [Auto-Seed] In-memory resilient baseline accounts seeded:');
-      console.log('   - Admin:  admin@ymentor.com / admin123');
-      console.log('   - Mentor: mentor.sarah@ymentor.com / mentor123');
-      console.log('   - Mentee: student.jordan@ymentor.com / student123');
+      console.log('   - Mentor: Alex Morgan (alex.morgan@ymentor.com)');
+      console.log('   - Mentee: Sarah Chen (sarah.chen@ymentor.com)');
+    }
+  }
+
+  if (!isMongoConnected && ADMIN_EMAIL && ADMIN_PASSWORD) {
+    const adminExists = global.ymentorMemoryStore.users.some(
+      (user) => user.email.toLowerCase() === ADMIN_EMAIL,
+    );
+    if (!adminExists) {
+      global.ymentorMemoryStore.users.push({
+        _id: 'user-admin-bootstrap',
+        name: 'YMentor Administrator',
+        email: ADMIN_EMAIL,
+        password: ADMIN_PASSWORD,
+        role: 'admin',
+        status: 'active',
+        isOnboarded: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      console.log(`🌱 [Auto-Seed] Provisioned administrator account: ${ADMIN_EMAIL}`);
     }
   }
 }
@@ -513,14 +553,6 @@ app.post('/api/auth/login', async (req, res) => {
       isMatch = await bcrypt.compare(password, user.password);
     } else {
       isMatch = password === user.password;
-    }
-
-    // Support seeded passwords
-    if (
-      !isMatch &&
-      (password === 'admin123' || password === 'mentor123' || password === 'student123' || password === 'password123')
-    ) {
-      isMatch = true;
     }
 
     if (!isMatch) {
@@ -1207,8 +1239,8 @@ app.get('/api/workspaces/user/:userId', async (req, res) => {
           const mentor = global.ymentorMemoryStore.users.find((u) => u._id === w.mentorId || u.id === w.mentorId);
           return {
             ...w,
-            menteeId: mentee || { name: 'Student Jordan', email: 'student.jordan@ymentor.com' },
-            mentorId: mentor || { name: 'Sarah Connor', email: 'mentor.sarah@ymentor.com' },
+            menteeId: mentee || { name: 'Sarah Chen', email: 'sarah.chen@ymentor.com' },
+            mentorId: mentor || { name: 'Alex Morgan', email: 'alex.morgan@ymentor.com' },
           };
         });
       return res.json(workspaces);
@@ -1666,9 +1698,9 @@ app.get('/api/health', (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Ymentor API server listening at http://localhost:${PORT}`);
-    console.log(`📡 ADB Reverse reminder: adb reverse tcp:${PORT} tcp:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 Ymentor API server listening on http://${HOST}:${PORT}`);
+    console.log(`📡 Devices on your Wi-Fi can connect to http://${WIFI_HOST}:${PORT}`);
   });
 }
 

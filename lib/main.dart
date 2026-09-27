@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'screens/root_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
+import 'widgets/common/app_logo_avatar.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -62,15 +63,9 @@ class AuthWrapper extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: AppColors.mint.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.mint.withValues(alpha: 0.5), width: 2),
-                ),
-                child: const Icon(Icons.school, color: AppColors.mint, size: 36),
+              const AppLogoAvatar(
+                size: 72,
+                assetPath: 'assets/images/logo.png',
               ),
               const SizedBox(height: 18),
               const Text(
@@ -84,14 +79,15 @@ class AuthWrapper extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Zero-Budget Micro-Mentorship Marketplace',
+                'Find guidance. Grow with confidence.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 24),
               const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.mint),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.5, color: AppColors.mint),
               ),
             ],
           ),

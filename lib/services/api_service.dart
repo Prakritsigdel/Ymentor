@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/user_model.dart';
@@ -16,12 +18,77 @@ class ApiException implements Exception {
 
 class ApiService {
   static final Uri _base = Uri.parse(ApiConfig.baseUrl);
+  static final http.Client _client = http.Client();
+  static const Duration _requestTimeout = Duration(seconds: 30);
 
   /// Global hook called when any request returns 401 Unauthorized
   static void Function()? onUnauthorized;
 
   /// Cached active auth token attached to headers
   static String? authToken;
+
+  static Future<http.Response> _send(
+    Uri uri,
+    http.BaseRequest request,
+  ) async {
+    try {
+      final streamed = await _client.send(request).timeout(_requestTimeout);
+      return await http.Response.fromStream(streamed).timeout(_requestTimeout);
+    } on SocketException catch (error, stackTrace) {
+      debugPrint('API request failed: $uri\n$error\n$stackTrace');
+      rethrow;
+    } on TimeoutException catch (error, stackTrace) {
+      debugPrint('API request timed out: $uri\n$error\n$stackTrace');
+      rethrow;
+    }
+  }
+
+  static Future<http.Response> _get(
+    Uri uri, {
+    Map<String, String>? headers,
+  }) {
+    final request = http.Request('GET', uri)
+      ..headers.addAll(headers ?? const {});
+    return _send(uri, request);
+  }
+
+  static Future<http.Response> _post(
+    Uri uri, {
+    Map<String, String>? headers,
+    String? body,
+  }) {
+    final request = http.Request('POST', uri)
+      ..headers.addAll(headers ?? const {})
+      ..body = body ?? '';
+    return _send(uri, request);
+  }
+
+  static Future<http.Response> _put(
+    Uri uri, {
+    Map<String, String>? headers,
+    String? body,
+  }) {
+    final request = http.Request('PUT', uri)
+      ..headers.addAll(headers ?? const {})
+      ..body = body ?? '';
+    return _send(uri, request);
+  }
+
+  static Future<http.Response> _patch(
+    Uri uri, {
+    Map<String, String>? headers,
+    String? body,
+  }) {
+    final request = http.Request('PATCH', uri)
+      ..headers.addAll(headers ?? const {})
+      ..body = body ?? '';
+    return _send(uri, request);
+  }
+
+  static Future<http.Response> _sendMultipart(
+    http.MultipartRequest request,
+  ) =>
+      _send(request.url, request);
 
   static Map<String, String> _headers([bool isJson = true]) {
     final map = <String, String>{};
@@ -37,7 +104,9 @@ class ApiService {
       onUnauthorized?.call();
       final body = _tryParseJson(res.body);
       throw ApiException(
-        body is Map ? (body['error'] ?? 'Unauthorized. Please log in again.') : 'Unauthorized.',
+        body is Map
+            ? (body['error'] ?? 'Unauthorized. Please log in again.')
+            : 'Unauthorized.',
         401,
       );
     }
@@ -49,7 +118,9 @@ class ApiService {
     }
 
     final errorMsg = body is Map
-        ? (body['error'] ?? body['message'] ?? 'Request failed with code ${res.statusCode}')
+        ? (body['error'] ??
+            body['message'] ??
+            'Request failed with code ${res.statusCode}')
         : 'Request failed with code ${res.statusCode}';
     throw ApiException(errorMsg.toString(), res.statusCode);
   }
@@ -67,7 +138,9 @@ class ApiService {
     }
 
     final errorMsg = body is Map
-        ? (body['error'] ?? body['message'] ?? 'Request failed with code ${res.statusCode}')
+        ? (body['error'] ??
+            body['message'] ??
+            'Request failed with code ${res.statusCode}')
         : 'Request failed with code ${res.statusCode}';
     throw ApiException(errorMsg.toString(), res.statusCode);
   }
@@ -85,9 +158,22 @@ class ApiService {
     try {
       return await call();
     } on SocketException {
-      throw ApiException('Cannot reach Ymentor server at ${ApiConfig.baseUrl}. Is the backend running?');
+      debugPrint('API connection failed at ${ApiConfig.apiBaseUrl}');
+      throw ApiException(
+        'Cannot reach the Ymentor server at ${ApiConfig.apiBaseUrl}. '
+        'Check the server address, that both devices are on the same Wi-Fi, '
+        'and that the computer firewall allows port 3000.',
+      );
+    } on TimeoutException {
+      throw ApiException(
+        'The Ymentor server request timed out at ${ApiConfig.apiBaseUrl}. '
+        'Check the server and Wi-Fi connection.',
+      );
     } on http.ClientException {
-      throw ApiException('Network connection failed. Please check your network connection to ${ApiConfig.baseUrl}.');
+      throw ApiException(
+        'Network connection to ${ApiConfig.apiBaseUrl} failed. '
+        'Check that the server is running and the device can reach the computer.',
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException(e.toString());
@@ -108,7 +194,7 @@ class ApiService {
     double? hourlyRate,
   }) async {
     return _guard(() async {
-      final res = await http.post(
+      final res = await _post(
         _base.replace(path: '/api/auth/register'),
         headers: _headers(),
         body: jsonEncode({
@@ -131,9 +217,10 @@ class ApiService {
     });
   }
 
-  static Future<Map<String, dynamic>> login({required String email, required String password}) async {
+  static Future<Map<String, dynamic>> login(
+      {required String email, required String password}) async {
     return _guard(() async {
-      final res = await http.post(
+      final res = await _post(
         _base.replace(path: '/api/auth/login'),
         headers: _headers(),
         body: jsonEncode({'email': email, 'password': password}),
@@ -148,12 +235,13 @@ class ApiService {
 
   static Future<AppUser> getMe() async {
     return _guard(() async {
-      final res = await http.get(
+      final res = await _get(
         _base.replace(path: '/api/auth/me'),
         headers: _headers(),
       );
       final data = _decode(res);
-      final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+      final userMap =
+          data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
       return AppUser.fromJson(userMap);
     });
   }
@@ -168,7 +256,7 @@ class ApiService {
     double? hourlyRate,
   }) async {
     return _guard(() async {
-      final res = await http.put(
+      final res = await _put(
         _base.replace(path: '/api/users/onboarding'),
         headers: _headers(),
         body: jsonEncode({
@@ -180,7 +268,8 @@ class ApiService {
         }),
       );
       final data = _decode(res);
-      final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+      final userMap =
+          data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
       return AppUser.fromJson(userMap);
     });
   }
@@ -196,7 +285,7 @@ class ApiService {
     String? meetingUrl,
   }) async {
     return _guard(() async {
-      final res = await http.put(
+      final res = await _put(
         _base.replace(path: '/api/users/profile'),
         headers: _headers(),
         body: jsonEncode({
@@ -211,37 +300,49 @@ class ApiService {
         }),
       );
       final data = _decode(res);
-      final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+      final userMap =
+          data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
       return AppUser.fromJson(userMap);
     });
   }
 
   // ---------------- MENTORS DISCOVERY ----------------
 
-  static Future<List<AppUser>> getMentors({String? interests, String? skill, String? q}) async {
+  static Future<List<AppUser>> getMentors(
+      {String? interests, String? skill, String? q}) async {
     return _guard(() async {
       final params = <String, String>{};
-      if (interests != null && interests.isNotEmpty) params['interests'] = interests;
+      if (interests != null && interests.isNotEmpty)
+        params['interests'] = interests;
       if (skill != null && skill.isNotEmpty) params['skill'] = skill;
       if (q != null && q.isNotEmpty) params['q'] = q;
 
-      final uri = _base.replace(path: '/api/users/mentors', queryParameters: params.isEmpty ? null : params);
-      final res = await http.get(uri, headers: _headers());
-      return _decodeList(res).map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
+      final uri = _base.replace(
+          path: '/api/users/mentors',
+          queryParameters: params.isEmpty ? null : params);
+      final res = await _get(uri, headers: _headers());
+      return _decodeList(res)
+          .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
   static Future<List<AppUser>> getLeaderboard({int limit = 10}) async {
     return _guard(() async {
-      final uri = _base.replace(path: '/api/mentors/leaderboard', queryParameters: {'limit': '$limit'});
-      final res = await http.get(uri, headers: _headers());
-      return _decodeList(res).map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
+      final uri = _base.replace(
+          path: '/api/mentors/leaderboard',
+          queryParameters: {'limit': '$limit'});
+      final res = await _get(uri, headers: _headers());
+      return _decodeList(res)
+          .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
   static Future<Map<String, dynamic>> getMentorProfile(String mentorId) async {
     return _guard(() async {
-      final res = await http.get(_base.replace(path: '/api/mentors/$mentorId'), headers: _headers());
+      final res = await _get(_base.replace(path: '/api/mentors/$mentorId'),
+          headers: _headers());
       return _decode(res);
     });
   }
@@ -252,7 +353,7 @@ class ApiService {
     String? meetingUrl,
   }) async {
     return _guard(() async {
-      final res = await http.patch(
+      final res = await _patch(
         _base.replace(path: '/api/mentors/$mentorId/config'),
         headers: _headers(),
         body: jsonEncode({
@@ -274,7 +375,7 @@ class ApiService {
     DateTime? scheduledTime,
   }) async {
     return _guard(() async {
-      final res = await http.post(
+      final res = await _post(
         _base.replace(path: '/api/bookings/checkout'),
         headers: _headers(),
         body: jsonEncode({
@@ -282,7 +383,9 @@ class ApiService {
           'mentorId': mentorId,
           'durationMinutes': durationMinutes,
           'price': price,
-          'scheduledTime': (scheduledTime ?? DateTime.now().add(const Duration(days: 1))).toIso8601String(),
+          'scheduledTime':
+              (scheduledTime ?? DateTime.now().add(const Duration(days: 1)))
+                  .toIso8601String(),
         }),
       );
       return _decode(res);
@@ -295,7 +398,7 @@ class ApiService {
     String reviewNote = 'Outstanding mentorship session!',
   }) async {
     return _guard(() async {
-      final res = await http.put(
+      final res = await _put(
         _base.replace(path: '/api/bookings/$bookingId/complete'),
         headers: _headers(),
         body: jsonEncode({'rating': rating, 'reviewNote': reviewNote}),
@@ -306,11 +409,13 @@ class ApiService {
 
   static Future<List<Booking>> getUserBookings(String userId) async {
     return _guard(() async {
-      final res = await http.get(
+      final res = await _get(
         _base.replace(path: '/api/bookings/user/$userId'),
         headers: _headers(),
       );
-      return _decodeList(res).map((e) => Booking.fromJson(e as Map<String, dynamic>)).toList();
+      return _decodeList(res)
+          .map((e) => Booking.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
@@ -318,21 +423,25 @@ class ApiService {
 
   static Future<List<Workspace>> getUserWorkspaces(String userId) async {
     return _guard(() async {
-      final res = await http.get(
+      final res = await _get(
         _base.replace(path: '/api/workspaces/user/$userId'),
         headers: _headers(),
       );
-      return _decodeList(res).map((e) => Workspace.fromJson(e as Map<String, dynamic>)).toList();
+      return _decodeList(res)
+          .map((e) => Workspace.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
   static Future<List<Note>> getWorkspaceNotes(String workspaceId) async {
     return _guard(() async {
-      final res = await http.get(
+      final res = await _get(
         _base.replace(path: '/api/workspaces/$workspaceId/notes'),
         headers: _headers(),
       );
-      return _decodeList(res).map((e) => Note.fromJson(e as Map<String, dynamic>)).toList();
+      return _decodeList(res)
+          .map((e) => Note.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
@@ -355,10 +464,10 @@ class ApiService {
       if (description != null) request.fields['description'] = description;
       if (dueDate != null) request.fields['dueDate'] = dueDate;
       if (pdfFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('pdf', pdfFile.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('pdf', pdfFile.path));
       }
-      final streamed = await request.send();
-      final res = await http.Response.fromStream(streamed);
+      final res = await _sendMultipart(request);
       return Note.fromJson(_decode(res));
     });
   }
@@ -370,10 +479,14 @@ class ApiService {
     required String message,
   }) async {
     return _guard(() async {
-      final res = await http.post(
+      final res = await _post(
         _base.replace(path: '/api/workspaces/notes/$noteId/comments'),
         headers: _headers(),
-        body: jsonEncode({'senderId': senderId, 'senderName': senderName, 'message': message}),
+        body: jsonEncode({
+          'senderId': senderId,
+          'senderName': senderName,
+          'message': message
+        }),
       );
       return NoteComment.fromJson(_decode(res));
     });
@@ -381,7 +494,7 @@ class ApiService {
 
   static Future<Note> toggleNote(String noteId) async {
     return _guard(() async {
-      final res = await http.patch(
+      final res = await _patch(
         _base.replace(path: '/api/workspaces/notes/$noteId/toggle'),
         headers: _headers(),
       );
@@ -393,58 +506,75 @@ class ApiService {
 
   static Future<List<AppUser>> getPendingMentors() async {
     return _guard(() async {
-      final res = await http.get(_base.replace(path: '/api/admin/pending-mentors'), headers: _headers());
-      return _decodeList(res).map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
+      final res = await _get(_base.replace(path: '/api/admin/pending-mentors'),
+          headers: _headers());
+      return _decodeList(res)
+          .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 
   static Future<AppUser> approveMentor(String mentorId) async {
     return _guard(() async {
-      final res = await http.put(_base.replace(path: '/api/admin/approve-mentor/$mentorId'), headers: _headers());
+      final res = await _put(
+          _base.replace(path: '/api/admin/approve-mentor/$mentorId'),
+          headers: _headers());
       final data = _decode(res);
-      final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+      final userMap =
+          data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
       return AppUser.fromJson(userMap);
     });
   }
 
-  static Future<AppUser> toggleUserStatus(String userId, {String? status}) async {
+  static Future<AppUser> toggleUserStatus(String userId,
+      {String? status}) async {
     return _guard(() async {
-      final res = await http.put(
+      final res = await _put(
         _base.replace(path: '/api/admin/toggle-user-status/$userId'),
         headers: _headers(),
         body: status != null ? jsonEncode({'status': status}) : null,
       );
       final data = _decode(res);
-      final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+      final userMap =
+          data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
       return AppUser.fromJson(userMap);
     });
   }
 
   static Future<Map<String, dynamic>> getEscrowTransactions() async {
     return _guard(() async {
-      final res = await http.get(_base.replace(path: '/api/admin/escrow-transactions'), headers: _headers());
+      final res = await _get(
+          _base.replace(path: '/api/admin/escrow-transactions'),
+          headers: _headers());
       return _decode(res);
     });
   }
 
-  static Future<Map<String, dynamic>> releaseEscrowAdmin(String bookingId) async {
+  static Future<Map<String, dynamic>> releaseEscrowAdmin(
+      String bookingId) async {
     return _guard(() async {
-      final res = await http.put(_base.replace(path: '/api/admin/release-escrow/$bookingId'), headers: _headers());
+      final res = await _put(
+          _base.replace(path: '/api/admin/release-escrow/$bookingId'),
+          headers: _headers());
       return _decode(res);
     });
   }
 
   static Future<List<dynamic>> getAuditLogs() async {
     return _guard(() async {
-      final res = await http.get(_base.replace(path: '/api/admin/audit-logs'), headers: _headers());
+      final res = await _get(_base.replace(path: '/api/admin/audit-logs'),
+          headers: _headers());
       return _decodeList(res);
     });
   }
 
   static Future<List<AppUser>> getAllUsers() async {
     return _guard(() async {
-      final res = await http.get(_base.replace(path: '/api/admin/users'), headers: _headers());
-      return _decodeList(res).map((e) => AppUser.fromJson(e as Map<String, dynamic>)).toList();
+      final res = await _get(_base.replace(path: '/api/admin/users'),
+          headers: _headers());
+      return _decodeList(res)
+          .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+          .toList();
     });
   }
 }
