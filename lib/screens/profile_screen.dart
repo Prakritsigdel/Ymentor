@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/common/app_logo_avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -64,7 +65,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final auth = context.read<AuthProvider>();
       final isMentor = auth.isMentor;
-      final rate = isMentor ? double.tryParse(_hourlyRateCtrl.text.trim()) : null;
+      final rate =
+          isMentor ? double.tryParse(_hourlyRateCtrl.text.trim()) : null;
 
       await auth.updateProfile(
         name: _nameCtrl.text.trim(),
@@ -145,7 +147,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Profile')),
         body: const Center(
-          child: Text('Not logged in.', style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Not logged in.',
+              style: TextStyle(color: AppColors.textSecondary)),
         ),
       );
     }
@@ -182,27 +185,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 42,
-                      backgroundColor: _roleColor(user.role).withValues(alpha: 0.2),
-                      child: Text(
-                        _getInitials(user.name),
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: _roleColor(user.role),
-                        ),
-                      ),
+                    AppLogoAvatar(
+                      size: 84,
+                      imageUrl: user.avatarUrl,
+                      fallbackText: _getInitials(user.name),
+                      backgroundColor:
+                          _roleColor(user.role).withValues(alpha: 0.2),
+                      foregroundColor: _roleColor(user.role),
                     ),
                     const SizedBox(height: 14),
                     Text(
                       user.name,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       user.email,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 14),
                     ),
                     const SizedBox(height: 12),
 
@@ -232,7 +233,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 10),
                       Text(
                         user.title,
-                        style: const TextStyle(color: AppColors.mint, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: AppColors.mint, fontWeight: FontWeight.w600),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -243,11 +245,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _stat('Wallet Balance', '\$${user.walletBalance.toStringAsFixed(2)}', AppColors.mint),
+                        _stat(
+                            'Wallet Balance',
+                            '\$${user.walletBalance.toStringAsFixed(2)}',
+                            AppColors.mint),
                         if (user.isMentor)
-                          _stat('Pending Escrow', '\$${user.pendingEscrow.toStringAsFixed(2)}', AppColors.star)
+                          _stat(
+                              'Pending Escrow',
+                              '\$${user.pendingEscrow.toStringAsFixed(2)}',
+                              AppColors.star)
                         else
-                          _stat('Sessions Completed', '${user.totalSessions}', AppColors.cyan),
+                          _stat('Sessions Completed', '${user.totalSessions}',
+                              AppColors.cyan),
                       ],
                     ),
                   ],
@@ -269,74 +278,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         const Text(
                           'Personal & Academic Info',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         if (_editing)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppColors.mint.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text('Editing', style: TextStyle(color: AppColors.mint, fontSize: 11)),
+                            child: const Text('Editing',
+                                style: TextStyle(
+                                    color: AppColors.mint, fontSize: 11)),
                           ),
                       ],
                     ),
                     const SizedBox(height: 16),
-
                     if (_editing) ...[
                       TextField(
                         controller: _nameCtrl,
-                        decoration: const InputDecoration(labelText: 'Full Name'),
+                        decoration:
+                            const InputDecoration(labelText: 'Full Name'),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _titleCtrl,
-                        decoration: const InputDecoration(labelText: 'Professional Title / Academic Degree'),
+                        decoration: const InputDecoration(
+                            labelText: 'Professional Title / Academic Degree'),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _facultyCtrl,
-                        decoration: const InputDecoration(labelText: 'Faculty / Department'),
+                        decoration: const InputDecoration(
+                            labelText: 'Faculty / Department'),
                       ),
                       const SizedBox(height: 12),
                       if (user.isMentor) ...[
                         TextField(
                           controller: _hourlyRateCtrl,
-                          decoration: const InputDecoration(labelText: 'Hourly Rate (USD \$)'),
+                          decoration: const InputDecoration(
+                              labelText: 'Hourly Rate (USD \$)'),
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _meetingUrlCtrl,
-                          decoration: const InputDecoration(labelText: 'Meeting Link (Google Meet / Zoom)'),
+                          decoration: const InputDecoration(
+                              labelText: 'Video Meeting Link'),
                         ),
                         const SizedBox(height: 12),
                       ],
                       TextField(
                         controller: _bioCtrl,
-                        decoration: const InputDecoration(labelText: 'Bio & Experience'),
+                        decoration: const InputDecoration(
+                            labelText: 'Bio & Experience'),
                         maxLines: 3,
                       ),
                     ] else ...[
-                      _infoRow('Faculty / Department', user.faculty.isNotEmpty ? user.faculty : 'Not specified'),
+                      _infoRow(
+                          'Faculty / Department',
+                          user.faculty.isNotEmpty
+                              ? user.faculty
+                              : 'Not specified'),
                       const SizedBox(height: 10),
-                      _infoRow('Title / Role', user.title.isNotEmpty ? user.title : 'Not specified'),
+                      _infoRow('Title / Role',
+                          user.title.isNotEmpty ? user.title : 'Not specified'),
                       const SizedBox(height: 10),
                       if (user.isMentor) ...[
-                        _infoRow('Base Hourly Rate', '\$${user.hourlyRate.toStringAsFixed(2)}/hr'),
+                        _infoRow('Base Hourly Rate',
+                            '\$${user.hourlyRate.toStringAsFixed(2)}/hr'),
                         const SizedBox(height: 10),
                         _infoRow('Meeting Link', user.meetingUrl),
                         const SizedBox(height: 10),
                       ],
-                      _infoRow('Bio', user.bio.isNotEmpty ? user.bio : 'No bio added yet.'),
+                      _infoRow('Bio',
+                          user.bio.isNotEmpty ? user.bio : 'No bio added yet.'),
                     ],
-
                     const SizedBox(height: 18),
                     const Text('Skills & Learning Interests',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 14)),
                     const SizedBox(height: 10),
-
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -344,12 +368,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return Chip(
                           label: Text(s),
                           backgroundColor: AppColors.background,
-                          deleteIcon: _editing ? const Icon(Icons.close, size: 16) : null,
+                          deleteIcon: _editing
+                              ? const Icon(Icons.close, size: 16)
+                              : null,
                           onDeleted: _editing ? () => _removeSkill(s) : null,
                         );
                       }).toList(),
                     ),
-
                     if (_editing) ...[
                       const SizedBox(height: 12),
                       Row(
@@ -359,7 +384,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               controller: _newSkillCtrl,
                               decoration: const InputDecoration(
                                 hintText: 'Add skill tag (e.g. Flutter, AI)...',
-                                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
                               ),
                               onSubmitted: (_) => _addSkill(),
                             ),
@@ -368,25 +394,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ElevatedButton(
                             onPressed: _addSkill,
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                             ),
                             child: const Text('Add'),
                           ),
                         ],
                       ),
                     ],
-
                     if (_error != null) ...[
                       const SizedBox(height: 14),
-                      Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                      Text(_error!,
+                          style: const TextStyle(
+                              color: Colors.redAccent, fontSize: 13)),
                     ],
-
                     if (_editing) ...[
                       const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: _saving ? null : _saveProfile,
                         child: _saving
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
                             : const Text('Save Changes'),
                       ),
                     ],
@@ -405,11 +436,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   builder: (ctx) => AlertDialog(
                     backgroundColor: AppColors.surface,
                     title: const Text('Log Out'),
-                    content: const Text('Are you sure you want to log out of Ymentor?'),
+                    content: const Text(
+                        'Are you sure you want to log out of Ymentor?'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                      TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('Cancel')),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent),
                         onPressed: () => Navigator.of(ctx).pop(true),
                         child: const Text('Log Out'),
                       ),
@@ -424,9 +459,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 }
               },
               icon: const Icon(Icons.logout, color: Colors.redAccent),
-              label: const Text('Log Out', style: TextStyle(color: Colors.redAccent)),
+              label: const Text('Log Out',
+                  style: TextStyle(color: Colors.redAccent)),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                side:
+                    BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
@@ -447,7 +484,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -455,9 +493,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _stat(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(value,
+            style: TextStyle(
+                color: color, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       ],
     );
   }
@@ -466,9 +508,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(value,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
       ],
     );
   }

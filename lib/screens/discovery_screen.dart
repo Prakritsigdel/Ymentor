@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/mentor_card.dart';
-import 'mentor_profile_screen.dart';
 import 'profile_screen.dart';
 import 'auth/login_screen.dart';
+import '../widgets/common/brand_footer.dart';
+import 'mentor_profile_sheet.dart';
+import '../widgets/common/app_logo_avatar.dart';
 
 const List<String> kSkillFilters = [
-  'Python',
+  'UI/UX',
   'Flutter',
+  'Backend',
   'AI',
-  'System Design',
-  'Node.js',
-  'MongoDB',
-  'Kubernetes',
 ];
 
 class DiscoveryScreen extends StatefulWidget {
@@ -26,10 +26,12 @@ class DiscoveryScreen extends StatefulWidget {
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
 }
 
-class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProviderStateMixin {
+class _DiscoveryScreenState extends State<DiscoveryScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _searchCtrl = TextEditingController();
   String? _selectedSkill;
+  final Set<String> _savedMentorIds = {};
 
   List<AppUser> _mentors = [];
   List<AppUser> _leaderboard = [];
@@ -58,7 +60,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
 
     try {
       final results = await Future.wait([
-        ApiService.getMentors(skill: _selectedSkill, q: _searchCtrl.text.trim()),
+        ApiService.getMentors(
+            skill: _selectedSkill, q: _searchCtrl.text.trim()),
         ApiService.getLeaderboard(limit: 10),
       ]);
 
@@ -70,10 +73,17 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Could not reach Ymentor server at localhost:3000. Is the backend running?');
+      setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _initials(String name) {
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+    if (parts.isEmpty) return 'Ym';
+    return parts.take(2).map((part) => part[0].toUpperCase()).join();
   }
 
   Color _roleColor(String role) {
@@ -97,7 +107,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Ymentor', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+            const AppLogoAvatar(size: 34, assetPath: 'assets/images/logo.png'),
+            const SizedBox(width: 8),
+            Text('YMentor',
+                style: GoogleFonts.playfairDisplay(
+                    fontWeight: FontWeight.bold, fontSize: 22)),
             if (user != null) ...[
               const SizedBox(width: 10),
               Container(
@@ -105,7 +119,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
                 decoration: BoxDecoration(
                   color: _roleColor(user.role).withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _roleColor(user.role).withValues(alpha: 0.6)),
+                  border: Border.all(
+                      color: _roleColor(user.role).withValues(alpha: 0.6)),
                 ),
                 child: Text(
                   user.roleBadgeLabel,
@@ -125,10 +140,17 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ProfileScreen()),
               ),
-              icon: const Icon(Icons.account_circle, color: AppColors.mint, size: 20),
+              icon: AppLogoAvatar(
+                size: 30,
+                imageUrl: user.avatarUrl,
+                fallbackText: _initials(user.name),
+              ),
               label: Text(
                 user.name.split(' ').first,
-                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13),
               ),
             ),
           ] else
@@ -174,8 +196,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Search mentors by name, headline, skill...',
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                hintText: 'Search mentors, skills, or expertise',
+                prefixIcon:
+                    const Icon(Icons.search, color: AppColors.textSecondary),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 18),
@@ -204,15 +227,17 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: FilterChip(
                     avatar: isStudentTarget && !selected
-                        ? const Icon(Icons.star, size: 14, color: AppColors.star)
+                        ? const Icon(Icons.star,
+                            size: 14, color: AppColors.star)
                         : null,
                     label: Text(skill),
                     selected: selected,
-                    selectedColor: AppColors.mint,
+                    selectedColor: AppColors.primary,
                     checkmarkColor: AppColors.background,
                     labelStyle: TextStyle(
-                      color: selected ? AppColors.background : AppColors.textPrimary,
-                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                      color: Colors.white,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
                       fontSize: 12,
                     ),
                     onSelected: (val) {
@@ -230,12 +255,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome, color: AppColors.mint, size: 14),
+                  const Icon(Icons.auto_awesome,
+                      color: AppColors.mint, size: 14),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'Recommended for your interests: ${studentInterests.join(', ')}',
-                      style: const TextStyle(color: AppColors.mint, fontSize: 11, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          color: AppColors.mint,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -245,6 +274,47 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
             ),
 
           const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    currentUser == null
+                        ? 'Find your next mentor'
+                        : 'Good to see you, ${currentUser.name.split(' ').first}',
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Stack(
+                  children: [
+                    AppLogoAvatar(
+                      size: 36,
+                      imageUrl: currentUser?.avatarUrl,
+                      fallbackText: currentUser == null
+                          ? null
+                          : _initials(currentUser.name),
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: AppColors.mint,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppColors.background, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           Expanded(child: _buildMentorList(_mentors)),
         ],
       ),
@@ -265,30 +335,40 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
       return ListView(
         children: [
           const SizedBox(height: 80),
-          Icon(Icons.cloud_off, size: 48, color: AppColors.textSecondary.withValues(alpha: 0.6)),
+          Icon(Icons.cloud_off,
+              size: 48, color: AppColors.textSecondary.withValues(alpha: 0.6)),
           const SizedBox(height: 12),
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+              child: Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textSecondary)),
             ),
           ),
           const SizedBox(height: 16),
-          Center(child: OutlinedButton(onPressed: _load, child: const Text('Retry'))),
+          Center(
+              child:
+                  OutlinedButton(onPressed: _load, child: const Text('Retry'))),
+          const BrandFooter(),
         ],
       );
     }
 
     if (mentors.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.search_off, size: 48, color: AppColors.textSecondary),
-            const SizedBox(height: 10),
-            const Text('No mentors found matching your filters.', style: TextStyle(color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            OutlinedButton(
+      return ListView(
+        padding: const EdgeInsets.only(top: 80),
+        children: [
+          const Icon(Icons.search_off,
+              size: 48, color: AppColors.textSecondary),
+          const SizedBox(height: 10),
+          const Center(
+            child: Text('No mentors found matching your filters.',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: OutlinedButton(
               onPressed: () {
                 setState(() {
                   _selectedSkill = null;
@@ -298,23 +378,37 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
               },
               child: const Text('Clear Filters'),
             ),
-          ],
-        ),
+          ),
+          const BrandFooter(),
+        ],
       );
     }
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      itemCount: mentors.length,
-      itemBuilder: (context, i) {
-        return MentorCard(
-          mentor: mentors[i],
-          rank: showRank ? i + 1 : null,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => MentorProfileScreen(mentorId: mentors[i].id)),
-          ),
-        );
-      },
+      children: [
+        ...mentors.asMap().entries.map((entry) {
+          final mentor = entry.value;
+          return MentorCard(
+            mentor: mentor,
+            rank: showRank ? entry.key + 1 : null,
+            onTap: () => _openMentor(mentor.id),
+            isSaved: _savedMentorIds.contains(mentor.id),
+            onSaveChanged: (saved) => setState(() {
+              if (saved) {
+                _savedMentorIds.add(mentor.id);
+              } else {
+                _savedMentorIds.remove(mentor.id);
+              }
+            }),
+          );
+        }),
+        const BrandFooter(),
+      ],
     );
+  }
+
+  void _openMentor(String mentorId) {
+    showMentorProfileSheet(context, mentorId);
   }
 }

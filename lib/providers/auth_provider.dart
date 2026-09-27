@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
@@ -56,6 +57,7 @@ class AuthProvider extends ChangeNotifier {
   static const _kToken = 'ymentor_token';
   static const _kUser = 'ymentor_user';
   static const _kPending = 'ymentor_pending_booking';
+  static const _secureStorage = FlutterSecureStorage();
 
   AuthProvider() {
     // Configure API service 401 interceptor callback
@@ -68,8 +70,21 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _restore() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_kToken);
-      final userJson = prefs.getString(_kUser);
+      var token = await _secureStorage.read(key: _kToken);
+      var userJson = await _secureStorage.read(key: _kUser);
+
+      final legacyToken = prefs.getString(_kToken);
+      final legacyUserJson = prefs.getString(_kUser);
+      if (token == null && legacyToken != null) {
+        token = legacyToken;
+        await _secureStorage.write(key: _kToken, value: legacyToken);
+      }
+      if (userJson == null && legacyUserJson != null) {
+        userJson = legacyUserJson;
+        await _secureStorage.write(key: _kUser, value: legacyUserJson);
+      }
+      await prefs.remove(_kToken);
+      await prefs.remove(_kUser);
 
       if (token != null && userJson != null) {
         _token = token;
@@ -93,15 +108,17 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
     if (_token != null && _user != null) {
       ApiService.authToken = _token;
-      await prefs.setString(_kToken, _token!);
-      await prefs.setString(_kUser, jsonEncode(_user!.toJson()));
+      await _secureStorage.write(key: _kToken, value: _token!);
+      await _secureStorage.write(
+        key: _kUser,
+        value: jsonEncode(_user!.toJson()),
+      );
     } else {
       ApiService.authToken = null;
-      await prefs.remove(_kToken);
-      await prefs.remove(_kUser);
+      await _secureStorage.delete(key: _kToken);
+      await _secureStorage.delete(key: _kUser);
     }
   }
 
@@ -210,6 +227,8 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     ApiService.authToken = null;
     final prefs = await SharedPreferences.getInstance();
+    await _secureStorage.delete(key: _kToken);
+    await _secureStorage.delete(key: _kUser);
     await prefs.remove(_kToken);
     await prefs.remove(_kUser);
     notifyListeners();

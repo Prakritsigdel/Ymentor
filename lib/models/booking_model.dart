@@ -2,7 +2,8 @@ class BookingFinancials {
   final double grossAmount;
   final double platformCommission20Percent;
   final double mentorNetPayout80Percent;
-  final String escrowStatus; // 'held_in_escrow', 'release_requested', 'released', 'refunded'
+  final String
+      escrowStatus; // 'held_in_escrow', 'release_requested', 'released', 'refunded'
 
   BookingFinancials({
     required this.grossAmount,
@@ -12,7 +13,8 @@ class BookingFinancials {
   });
 
   factory BookingFinancials.fromJson(Map<String, dynamic> json) {
-    final status = (json['escrowStatus']?.toString() ?? 'held_in_escrow').toLowerCase();
+    final status =
+        (json['escrowStatus']?.toString() ?? 'held_in_escrow').toLowerCase();
     return BookingFinancials(
       grossAmount: (json['grossAmount'] as num?)?.toDouble() ?? 0.0,
       platformCommission20Percent:
@@ -72,11 +74,15 @@ class Booking {
   }
 
   factory Booking.fromJson(Map<String, dynamic> json) {
-    final finMap = json['financials'] is Map ? json['financials'] as Map<String, dynamic> : <String, dynamic>{};
+    final finMap = json['financials'] is Map
+        ? json['financials'] as Map<String, dynamic>
+        : <String, dynamic>{};
     final fin = BookingFinancials.fromJson(finMap);
 
-    final resolvedEscrow = (json['escrowStatus']?.toString() ?? fin.escrowStatus).toLowerCase();
-    final feeVal = (json['platformFee'] as num?)?.toDouble() ?? fin.platformCommission20Percent;
+    final resolvedEscrow =
+        (json['escrowStatus']?.toString() ?? fin.escrowStatus).toLowerCase();
+    final feeVal = (json['platformFee'] as num?)?.toDouble() ??
+        fin.platformCommission20Percent;
 
     return Booking(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -85,8 +91,10 @@ class Booking {
       mentorName: _nameOf(json['mentorId']),
       menteeName: _nameOf(json['menteeId']),
       durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 30,
-      scheduledTime: DateTime.tryParse(json['scheduledTime']?.toString() ?? '') ?? DateTime.now(),
-      meetingUrl: json['meetingUrl']?.toString() ?? 'https://meet.google.com/abc-defg-hij',
+      scheduledTime:
+          DateTime.tryParse(json['scheduledTime']?.toString() ?? '') ??
+              DateTime.now(),
+      meetingUrl: json['meetingUrl']?.toString() ?? '',
       platformFee: feeVal,
       escrowStatus: resolvedEscrow,
       financials: fin,

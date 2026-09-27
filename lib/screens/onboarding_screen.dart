@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/common/app_logo_avatar.dart';
 
 const List<String> kFacultyOptions = [
   'Computer Science',
@@ -49,7 +50,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       if (user.title.isNotEmpty) _titleCtrl.text = user.title;
       if (user.bio.isNotEmpty) _bioCtrl.text = user.bio;
-      if (user.hourlyRate > 0) _hourlyRateCtrl.text = user.hourlyRate.toStringAsFixed(0);
+      if (user.hourlyRate > 0)
+        _hourlyRateCtrl.text = user.hourlyRate.toStringAsFixed(0);
     }
   }
 
@@ -63,7 +65,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _submit() async {
     if (_selectedInterests.isEmpty) {
-      setState(() => _error = 'Please select at least one learning interest tag.');
+      setState(
+          () => _error = 'Please select at least one learning interest tag.');
       return;
     }
 
@@ -75,7 +78,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       final auth = context.read<AuthProvider>();
       final isMentor = auth.isMentor;
-      final rate = isMentor ? (double.tryParse(_hourlyRateCtrl.text.trim()) ?? 20.0) : null;
+      final rate = isMentor
+          ? (double.tryParse(_hourlyRateCtrl.text.trim()) ?? 20.0)
+          : null;
 
       await auth.completeOnboarding(
         faculty: _selectedFaculty,
@@ -87,7 +92,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Onboarding completed! Welcome to Ymentor.')),
+        const SnackBar(
+            content: Text('Onboarding completed! Welcome to Ymentor.')),
       );
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('ApiException: ', ''));
@@ -130,14 +136,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 26,
+                    AppLogoAvatar(
+                      size: 52,
+                      imageUrl: user?.avatarUrl,
+                      fallbackText: user == null
+                          ? 'Ym'
+                          : user.name
+                              .trim()
+                              .split(RegExp(r'\s+'))
+                              .where((part) => part.isNotEmpty)
+                              .take(2)
+                              .map((part) => part[0].toUpperCase())
+                              .join(),
                       backgroundColor: AppColors.mint.withValues(alpha: 0.2),
-                      child: Icon(
-                        isMentor ? Icons.school : Icons.person_search,
-                        color: AppColors.mint,
-                        size: 28,
-                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -146,14 +157,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           Text(
                             'Welcome, ${user?.name ?? 'Scholar'}!',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             isMentor
                                 ? 'Set up your mentorship specialties & rates.'
                                 : 'Select your faculty and what you want to learn.',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            style: const TextStyle(
+                                color: AppColors.textSecondary, fontSize: 13),
                           ),
                         ],
                       ),
@@ -172,12 +185,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 initialValue: _selectedFaculty,
                 dropdownColor: AppColors.surface,
                 decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.account_balance, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.account_balance,
+                      color: AppColors.textSecondary),
                 ),
                 items: kFacultyOptions
                     .map((fac) => DropdownMenuItem(
                           value: fac,
-                          child: Text(fac, style: const TextStyle(fontSize: 14)),
+                          child:
+                              Text(fac, style: const TextStyle(fontSize: 14)),
                         ))
                     .toList(),
                 onChanged: (val) {
@@ -190,7 +205,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               // Learning / Specialization Interests
               Text(
                 isMentor ? 'Mentorship Specializations' : 'Learning Interests',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
               const SizedBox(height: 4),
               const Text(
@@ -209,8 +225,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     selectedColor: AppColors.mint,
                     checkmarkColor: AppColors.background,
                     labelStyle: TextStyle(
-                      color: selected ? AppColors.background : AppColors.textPrimary,
-                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                      color: selected
+                          ? AppColors.background
+                          : AppColors.textPrimary,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
                     ),
                     onSelected: (val) {
                       setState(() {
@@ -229,22 +248,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
               // Professional Title
               Text(
-                isMentor ? 'Professional Title / Role' : 'Current Status / Degree',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                isMentor
+                    ? 'Professional Title / Role'
+                    : 'Current Status / Degree',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _titleCtrl,
                 decoration: InputDecoration(
-                  hintText: isMentor ? 'e.g. Senior AI Engineer' : 'e.g. CS Sophomore @ Stanford',
-                  prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.textSecondary),
+                  hintText: isMentor
+                      ? 'e.g. Senior AI Engineer'
+                      : 'e.g. CS Sophomore @ Stanford',
+                  prefixIcon: const Icon(Icons.badge_outlined,
+                      color: AppColors.textSecondary),
                 ),
               ),
 
               if (isMentor) ...[
                 const SizedBox(height: 20),
                 const Text('Base Hourly Mentorship Rate (USD \$)',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _hourlyRateCtrl,
@@ -259,7 +285,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 20),
 
               // Bio
-              const Text('Short Bio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+              const Text('Short Bio',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
               const SizedBox(height: 8),
               TextField(
                 controller: _bioCtrl,
@@ -278,9 +305,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: BoxDecoration(
                     color: Colors.redAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.3)),
                   ),
-                  child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                  child: Text(_error!,
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 13)),
                 ),
               ],
 
@@ -289,7 +319,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ElevatedButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Complete Onboarding & Enter Ymentor'),
               ),
               const SizedBox(height: 20),

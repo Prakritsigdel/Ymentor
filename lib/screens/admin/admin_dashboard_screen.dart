@@ -5,6 +5,7 @@ import '../../config/theme.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../widgets/common/app_logo_avatar.dart';
 import '../profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -14,7 +15,8 @@ class AdminDashboardScreen extends StatefulWidget {
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
+class _AdminDashboardScreenState extends State<AdminDashboardScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   // Data states
@@ -60,7 +62,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         _pendingMentors = results[0] as List<AppUser>;
         _allUsers = results[1] as List<AppUser>;
         final escrowData = results[2] as Map<String, dynamic>;
-        _escrowSummary = escrowData['totals'] is Map ? escrowData['totals'] as Map<String, dynamic> : {};
+        _escrowSummary = escrowData['totals'] is Map
+            ? escrowData['totals'] as Map<String, dynamic>
+            : {};
         _escrowTransactions = escrowData['transactions'] as List? ?? [];
         _auditLogs = results[3] as List<dynamic>;
       });
@@ -101,10 +105,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           'Are you sure you want to change ${user.name} (${user.email}) status to "$newStatus"?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: user.isSuspended ? AppColors.mint : Colors.redAccent,
+              backgroundColor:
+                  user.isSuspended ? AppColors.mint : Colors.redAccent,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(actionWord),
@@ -140,7 +147,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           'As an Administrator, releasing escrow will immediately credit the mentor net payout and conclude this transaction.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.mint),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -156,7 +165,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       await ApiService.releaseEscrowAdmin(bookingId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escrow funds successfully released by administrator!')),
+        const SnackBar(
+            content:
+                Text('Escrow funds successfully released by administrator!')),
       );
       _loadAll();
     } catch (e) {
@@ -176,6 +187,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const AppLogoAvatar(
+              size: 30,
+              assetPath: 'assets/images/logo.png',
+            ),
+            const SizedBox(width: 8),
             Flexible(
               child: const Text(
                 'Admin Control Panel',
@@ -189,11 +205,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               decoration: BoxDecoration(
                 color: AppColors.star.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.star.withValues(alpha: 0.6)),
+                border:
+                    Border.all(color: AppColors.star.withValues(alpha: 0.6)),
               ),
               child: const Text(
                 'ADMIN',
-                style: TextStyle(color: AppColors.star, fontSize: 11, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: AppColors.star,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -201,7 +221,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         actions: [
           IconButton(
             tooltip: 'View Profile',
-            icon: const Icon(Icons.account_circle_outlined),
+            icon: AppLogoAvatar(
+              size: 30,
+              imageUrl: auth.user?.avatarUrl,
+              fallbackText: auth.user?.name.isNotEmpty == true
+                  ? auth.user!.name[0].toUpperCase()
+                  : 'Ym',
+            ),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ProfileScreen()),
             ),
@@ -270,7 +296,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Pending Mentor Approvals', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Pending Mentor Approvals',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -279,7 +306,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ),
                 child: Text(
                   '${_pendingMentors.length} Pending',
-                  style: const TextStyle(color: AppColors.star, fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: AppColors.star,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -292,12 +322,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: const [
-                    Icon(Icons.check_circle_outline, color: AppColors.mint, size: 24),
+                    Icon(Icons.check_circle_outline,
+                        color: AppColors.mint, size: 24),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'All mentor applications reviewed. No pending approvals!',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13),
                       ),
                     ),
                   ],
@@ -314,22 +346,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       children: [
                         Row(
                           children: [
-                            CircleAvatar(
-                              backgroundColor: AppColors.mint.withValues(alpha: 0.2),
-                              child: Text(
-                                m.name.isNotEmpty ? m.name[0] : 'M',
-                                style: const TextStyle(color: AppColors.mint, fontWeight: FontWeight.bold),
-                              ),
+                            AppLogoAvatar(
+                              size: 44,
+                              imageUrl: m.avatarUrl,
+                              fallbackText: m.name.isNotEmpty
+                                  ? m.name[0].toUpperCase()
+                                  : 'Ym',
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                  Text(m.email, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  Text(m.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15)),
+                                  Text(m.email,
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12)),
                                   if (m.title.isNotEmpty)
-                                    Text(m.title, style: const TextStyle(color: AppColors.mint, fontSize: 12)),
+                                    Text(m.title,
+                                        style: const TextStyle(
+                                            color: AppColors.mint,
+                                            fontSize: 12)),
                                 ],
                               ),
                             ),
@@ -338,7 +379,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               icon: const Icon(Icons.check, size: 16),
                               label: const Text('Approve'),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
                               ),
                             ),
                           ],
@@ -350,7 +392,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             runSpacing: 4,
                             children: m.skillsOrInterests
                                 .map((s) => Chip(
-                                      label: Text(s, style: const TextStyle(fontSize: 11)),
+                                      label: Text(s,
+                                          style: const TextStyle(fontSize: 11)),
                                       backgroundColor: AppColors.background,
                                       padding: EdgeInsets.zero,
                                     ))
@@ -368,8 +411,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Registered Users Directory', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Text('${_allUsers.length} total', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const Text('Registered Users Directory',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('${_allUsers.length} total',
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 10),
@@ -379,17 +425,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                leading: CircleAvatar(
+                leading: AppLogoAvatar(
+                  size: 44,
+                  imageUrl: u.avatarUrl,
+                  fallbackText:
+                      u.name.isNotEmpty ? u.name[0].toUpperCase() : 'Ym',
                   backgroundColor: isBanned
                       ? Colors.redAccent.withValues(alpha: 0.2)
-                      : (u.isMentor ? AppColors.mint : AppColors.cyan).withValues(alpha: 0.2),
-                  child: Icon(
-                    u.isAdmin ? Icons.security : (u.isMentor ? Icons.school : Icons.person),
-                    color: isBanned
-                        ? Colors.redAccent
-                        : (u.isMentor ? AppColors.mint : AppColors.cyan),
-                    size: 18,
-                  ),
+                      : (u.isMentor ? AppColors.mint : AppColors.cyan)
+                          .withValues(alpha: 0.2),
+                  foregroundColor:
+                      isBanned ? Colors.redAccent : AppColors.textPrimary,
                 ),
                 title: Row(
                   children: [
@@ -397,18 +443,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       child: Text(u.name,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            decoration: isBanned ? TextDecoration.lineThrough : null,
+                            decoration:
+                                isBanned ? TextDecoration.lineThrough : null,
                           ),
                           overflow: TextOverflow.ellipsis),
                     ),
                     const SizedBox(width: 6),
-                    _badgeSmall(u.roleBadgeLabel, u.isMentor ? AppColors.mint : (u.isAdmin ? AppColors.star : AppColors.cyan)),
+                    _badgeSmall(
+                        u.roleBadgeLabel,
+                        u.isMentor
+                            ? AppColors.mint
+                            : (u.isAdmin ? AppColors.star : AppColors.cyan)),
                   ],
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(u.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(u.email,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
                     const SizedBox(height: 2),
                     Row(
                       children: [
@@ -418,7 +471,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: isBanned ? Colors.redAccent : AppColors.verified)),
+                                color: isBanned
+                                    ? Colors.redAccent
+                                    : AppColors.verified)),
                       ],
                     ),
                   ],
@@ -427,8 +482,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ? const SizedBox()
                     : OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: isBanned ? AppColors.mint : Colors.redAccent),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: BorderSide(
+                              color:
+                                  isBanned ? AppColors.mint : Colors.redAccent),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                         ),
                         onPressed: () => _toggleUserStatus(u),
                         child: Text(
@@ -450,10 +508,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   // ---------------- TAB 2: ESCROW RELEASES & FEE BREAKDOWN ----------------
   Widget _buildEscrowTab() {
-    final totalGross = (_escrowSummary['totalGross'] as num?)?.toDouble() ?? 0.0;
-    final totalFees = (_escrowSummary['totalPlatformFees'] as num?)?.toDouble() ?? 0.0;
-    final totalHeld = (_escrowSummary['totalHeldInEscrow'] as num?)?.toDouble() ?? 0.0;
-    final totalReleased = (_escrowSummary['totalReleased'] as num?)?.toDouble() ?? 0.0;
+    final totalGross =
+        (_escrowSummary['totalGross'] as num?)?.toDouble() ?? 0.0;
+    final totalFees =
+        (_escrowSummary['totalPlatformFees'] as num?)?.toDouble() ?? 0.0;
+    final totalHeld =
+        (_escrowSummary['totalHeldInEscrow'] as num?)?.toDouble() ?? 0.0;
+    final totalReleased =
+        (_escrowSummary['totalReleased'] as num?)?.toDouble() ?? 0.0;
 
     return RefreshIndicator(
       onRefresh: _loadAll,
@@ -463,44 +525,63 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           // Platform Financial Summary Cards
           Row(
             children: [
-              Expanded(child: _metricCard('Gross Platform Volume', '\$${totalGross.toStringAsFixed(2)}', AppColors.cyan)),
+              Expanded(
+                  child: _metricCard('Gross Platform Volume',
+                      '\$${totalGross.toStringAsFixed(2)}', AppColors.cyan)),
               const SizedBox(width: 10),
-              Expanded(child: _metricCard('Platform Fees (20% / \$4)', '\$${totalFees.toStringAsFixed(2)}', AppColors.mint)),
+              Expanded(
+                  child: _metricCard('Platform Fees (20% / \$4)',
+                      '\$${totalFees.toStringAsFixed(2)}', AppColors.mint)),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _metricCard('Currently in Escrow', '\$${totalHeld.toStringAsFixed(2)}', AppColors.star)),
+              Expanded(
+                  child: _metricCard('Currently in Escrow',
+                      '\$${totalHeld.toStringAsFixed(2)}', AppColors.star)),
               const SizedBox(width: 10),
-              Expanded(child: _metricCard('Released to Mentors', '\$${totalReleased.toStringAsFixed(2)}', AppColors.verified)),
+              Expanded(
+                  child: _metricCard(
+                      'Released to Mentors',
+                      '\$${totalReleased.toStringAsFixed(2)}',
+                      AppColors.verified)),
             ],
           ),
 
           const SizedBox(height: 24),
-          const Text('All Escrow Bookings & Transactions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('All Escrow Bookings & Transactions',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
 
           if (_escrowTransactions.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
-                child: Text('No escrow transactions recorded yet.', style: TextStyle(color: AppColors.textSecondary)),
+                child: Text('No escrow transactions recorded yet.',
+                    style: TextStyle(color: AppColors.textSecondary)),
               ),
             )
           else
             ..._escrowTransactions.map((tx) {
               final id = tx['_id']?.toString() ?? tx['id']?.toString() ?? '-';
-              final gross = (tx['financials']?['grossAmount'] as num?)?.toDouble() ?? 20.0;
+              final gross =
+                  (tx['financials']?['grossAmount'] as num?)?.toDouble() ??
+                      20.0;
               final fee = (tx['platformFee'] as num?)?.toDouble() ??
-                  (tx['financials']?['platformCommission20Percent'] as num?)?.toDouble() ??
+                  (tx['financials']?['platformCommission20Percent'] as num?)
+                      ?.toDouble() ??
                   4.0;
-              final net = (tx['financials']?['mentorNetPayout80Percent'] as num?)?.toDouble() ?? (gross - fee);
+              final net =
+                  (tx['financials']?['mentorNetPayout80Percent'] as num?)
+                          ?.toDouble() ??
+                      (gross - fee);
               final escrowStatus = (tx['escrowStatus']?.toString() ??
                       tx['financials']?['escrowStatus']?.toString() ??
                       'held_in_escrow')
                   .toLowerCase();
-              final isHeld = escrowStatus == 'held_in_escrow' || escrowStatus == 'held';
+              final isHeld =
+                  escrowStatus == 'held_in_escrow' || escrowStatus == 'held';
 
               String menteeName = 'Mentee';
               if (tx['menteeId'] is Map) {
@@ -521,18 +602,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('TX #$id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
+                          Text('TX #$id',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary)),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: (isHeld ? AppColors.star : AppColors.verified).withValues(alpha: 0.15),
+                              color:
+                                  (isHeld ? AppColors.star : AppColors.verified)
+                                      .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: (isHeld ? AppColors.star : AppColors.verified).withValues(alpha: 0.5)),
+                              border: Border.all(
+                                  color: (isHeld
+                                          ? AppColors.star
+                                          : AppColors.verified)
+                                      .withValues(alpha: 0.5)),
                             ),
                             child: Text(
                               isHeld ? 'HELD IN ESCROW' : 'RELEASED',
                               style: TextStyle(
-                                color: isHeld ? AppColors.star : AppColors.verified,
+                                color: isHeld
+                                    ? AppColors.star
+                                    : AppColors.verified,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -541,14 +635,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('$menteeName  →  $mentorName', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                      Text('$menteeName  →  $mentorName',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 15)),
                       const Divider(height: 20, color: AppColors.border),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _feeColumn('Gross Total', '\$${gross.toStringAsFixed(2)}', AppColors.textPrimary),
-                          _feeColumn('Platform Fee', '-\$${fee.toStringAsFixed(2)}', AppColors.textSecondary),
-                          _feeColumn('Mentor Net Payout', '\$${net.toStringAsFixed(2)}', AppColors.mint),
+                          _feeColumn(
+                              'Gross Total',
+                              '\$${gross.toStringAsFixed(2)}',
+                              AppColors.textPrimary),
+                          _feeColumn(
+                              'Platform Fee',
+                              '-\$${fee.toStringAsFixed(2)}',
+                              AppColors.textSecondary),
+                          _feeColumn('Mentor Net Payout',
+                              '\$${net.toStringAsFixed(2)}', AppColors.mint),
                         ],
                       ),
                       if (isHeld) ...[
@@ -558,11 +661,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.mint,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
                             ),
                             onPressed: () => _releaseEscrow(id),
                             icon: const Icon(Icons.lock_open, size: 16),
-                            label: const Text('Release Escrow (Admin Override)'),
+                            label:
+                                const Text('Release Escrow (Admin Override)'),
                           ),
                         ),
                       ],
@@ -582,7 +687,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       onRefresh: _loadAll,
       child: _auditLogs.isEmpty
           ? const Center(
-              child: Text('No audit logs recorded yet.', style: TextStyle(color: AppColors.textSecondary)),
+              child: Text('No audit logs recorded yet.',
+                  style: TextStyle(color: AppColors.textSecondary)),
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -592,7 +698,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 final action = log['action']?.toString() ?? 'SYSTEM_EVENT';
                 final actorName = log['actorName']?.toString() ?? 'System';
                 final actorRole = log['actorRole']?.toString() ?? 'system';
-                final details = log['details'] is Map ? log['details'] as Map<String, dynamic> : {};
+                final details = log['details'] is Map
+                    ? log['details'] as Map<String, dynamic>
+                    : {};
                 final dateStr = log['timestamp']?.toString();
                 DateTime? date;
                 if (dateStr != null) date = DateTime.tryParse(dateStr);
@@ -608,11 +716,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: _auditActionColor(action).withValues(alpha: 0.15),
+                                color: _auditActionColor(action)
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: _auditActionColor(action).withValues(alpha: 0.5)),
+                                border: Border.all(
+                                    color: _auditActionColor(action)
+                                        .withValues(alpha: 0.5)),
                               ),
                               child: Text(
                                 action,
@@ -626,14 +738,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             if (date != null)
                               Text(
                                 DateFormat('MMM d, h:mm a').format(date),
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12),
                               ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Triggered by: $actorName ($actorRole)',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                         if (details.isNotEmpty) ...[
                           const SizedBox(height: 6),
@@ -645,7 +760,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             ),
                             child: Text(
                               details.toString(),
-                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'monospace'),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                  fontFamily: 'monospace'),
                             ),
                           ),
                         ],
@@ -660,10 +778,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   Color _auditActionColor(String action) {
     if (action.contains('RELEASE')) return AppColors.mint;
-    if (action.contains('SUSPEND') || action.contains('BAN')) return Colors.redAccent;
+    if (action.contains('SUSPEND') || action.contains('BAN'))
+      return Colors.redAccent;
     if (action.contains('APPROVE')) return AppColors.verified;
     if (action.contains('LOGIN')) return AppColors.cyan;
-    if (action.contains('REGISTER') || action.contains('SEED')) return AppColors.star;
+    if (action.contains('REGISTER') || action.contains('SEED'))
+      return AppColors.star;
     return AppColors.mint;
   }
 
@@ -674,9 +794,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            Text(label,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12)),
             const SizedBox(height: 6),
-            Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(value,
+                style: TextStyle(
+                    color: color, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -687,9 +811,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
         const SizedBox(height: 2),
-        Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(value,
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.bold, fontSize: 14)),
       ],
     );
   }
@@ -701,12 +829,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      child: Text(label,
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
   Widget _statusDot(String status) {
-    final color = status.toLowerCase() == 'active' ? AppColors.verified : Colors.redAccent;
+    final color = status.toLowerCase() == 'active'
+        ? AppColors.verified
+        : Colors.redAccent;
     return Container(
       width: 8,
       height: 8,

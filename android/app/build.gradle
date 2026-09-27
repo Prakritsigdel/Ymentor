@@ -54,7 +54,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: add your own signing config before shipping a real release.
+            // Add a release signing configuration before publishing a production build.
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false

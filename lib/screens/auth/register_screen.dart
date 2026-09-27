@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/common/app_logo_avatar.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -27,7 +28,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    if (_nameCtrl.text.trim().isEmpty || _emailCtrl.text.trim().isEmpty || _passwordCtrl.text.isEmpty) {
+    if (_nameCtrl.text.trim().isEmpty ||
+        _emailCtrl.text.trim().isEmpty ||
+        _passwordCtrl.text.isEmpty) {
       setState(() => _error = 'Please fill in all required fields.');
       return;
     }
@@ -64,7 +67,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Join Ymentor', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AppLogoAvatar(
+                  size: 64,
+                  assetPath: 'assets/images/logo.png',
+                  circular: false,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Join Ymentor',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               const Text(
                 'Join as a Student (Mentee), Mentor, or Administrator.',
@@ -118,7 +131,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _nameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person_outline, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.person_outline,
+                      color: AppColors.textSecondary),
                 ),
               ),
               const SizedBox(height: 14),
@@ -127,7 +141,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _emailCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Email Address',
-                  prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
+                  prefixIcon: Icon(Icons.email_outlined,
+                      color: AppColors.textSecondary),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -137,7 +152,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _passwordCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock_outline, color: AppColors.textSecondary),
+                  prefixIcon:
+                      Icon(Icons.lock_outline, color: AppColors.textSecondary),
                 ),
                 obscureText: true,
               ),
@@ -149,9 +165,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: BoxDecoration(
                     color: Colors.redAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                    border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.4)),
                   ),
-                  child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                  child: Text(_error!,
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 13)),
                 ),
               ],
 
@@ -160,8 +179,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ElevatedButton(
                 onPressed: _loading ? null : _submit,
                 child: _loading
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text('Register as ${_role[0].toUpperCase()}${_role.substring(1)}'),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(
+                        'Register as ${_role[0].toUpperCase()}${_role.substring(1)}'),
               ),
 
               const SizedBox(height: 14),
@@ -192,12 +215,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: selected ? AppColors.background : AppColors.textSecondary),
+              Icon(icon,
+                  size: 16,
+                  color: selected
+                      ? AppColors.background
+                      : AppColors.textSecondary),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: selected ? AppColors.background : AppColors.textSecondary,
+                  color:
+                      selected ? AppColors.background : AppColors.textSecondary,
                   fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 13,
                 ),

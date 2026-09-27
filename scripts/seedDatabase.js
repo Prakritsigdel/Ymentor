@@ -1,63 +1,44 @@
 /**
- * Baseline Seed Script for MongoDB
+ * Create or migrate the two baseline Ymentor accounts in MongoDB.
  * Run with: node scripts/seedDatabase.js
- *
- * Populates ONLY the 3 baseline demo accounts:
- * - Admin: admin@ymentor.com / admin123
- * - Mentor: mentor.sarah@ymentor.com / mentor123
- * - Mentee: student.jordan@ymentor.com / student123
  */
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const User = require('../models/User');
-const Booking = require('../models/Booking');
 const Workspace = require('../models/Workspace');
-const Note = require('../models/Note');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ymentor';
+const adminEmail = process.env.YMENTOR_ADMIN_EMAIL?.trim().toLowerCase();
+const adminPassword = process.env.YMENTOR_ADMIN_PASSWORD;
+
+if (Boolean(adminEmail) !== Boolean(adminPassword)) {
+  throw new Error('Set both YMENTOR_ADMIN_EMAIL and YMENTOR_ADMIN_PASSWORD to provision an administrator.');
+}
 
 const baselineUsers = [
   {
-    name: 'System Administrator',
-    email: 'admin@ymentor.com',
-    password: 'admin123',
-    role: 'admin',
-    status: 'active',
-    isOnboarded: true,
-    headline: 'Platform Arbiter & Admin',
-    bio: 'Ymentor Lead Administrator managing verification, escrow disputes, and platform health.',
-    faculty: 'System Administration',
-    skillsOrInterests: ['System Administration', 'Compliance', 'Security'],
-    hourlyRate: 0,
-    wallet: { balance: 500.0, pendingEscrow: 0.0 },
-    walletBalance: 500.0,
-    isIdentityVerified: true,
-    isSkillVerified: true,
-  },
-  {
-    name: 'Sarah Connor',
-    email: 'mentor.sarah@ymentor.com',
-    password: 'mentor123',
+    legacyEmail: 'mentor.sarah@ymentor.com',
+    name: 'Alex Morgan',
+    email: 'alex.morgan@ymentor.com',
+    password: 'AlexMentor!Ymentor2026',
     role: 'mentor',
     status: 'active',
     isOnboarded: true,
-    title: 'Senior AI Engineer',
+    title: 'Senior Engineer',
     hourlyRate: 20,
     skillsOrInterests: ['AI', 'Python', 'Flutter'],
-    headline: 'Senior AI Engineer & Tech Lead',
-    bio: 'Senior AI Engineer specializing in production LLMs, PyTorch pipelines, and performant Flutter interfaces.',
-    faculty: 'Computer Science & AI',
+    headline: 'Senior Engineer & Technical Mentor',
+    bio: 'Senior software engineer helping teams design reliable AI and mobile applications.',
+    faculty: 'Software Engineering',
     qualifications: {
-      degree: 'M.S. in Computer Science',
-      faculty: 'Computer Science & AI',
+      degree: 'M.S. in Software Engineering',
+      faculty: 'Software Engineering',
       skills: ['AI', 'Python', 'Flutter'],
-      githubUrl: 'https://github.com/sarah-ai-ymentor',
-      linkedinUrl: 'https://linkedin.com/in/sarah-connor-ymentor',
     },
     pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
-    meetingUrl: 'https://meet.google.com/ymentor-sarah-mentor',
+    meetingUrl: 'https://meet.google.com/ymentor-alex-mentor',
     ratingAvg: 4.95,
     totalSessions: 38,
     wallet: { balance: 320.0, pendingEscrow: 16.0 },
@@ -66,22 +47,21 @@ const baselineUsers = [
     isSkillVerified: true,
   },
   {
-    name: 'Jordan Cole',
-    email: 'student.jordan@ymentor.com',
-    password: 'student123',
+    legacyEmail: 'student.jordan@ymentor.com',
+    name: 'Sarah Chen',
+    email: 'sarah.chen@ymentor.com',
+    password: 'SarahStudent!Ymentor2026',
     role: 'mentee',
     status: 'active',
     isOnboarded: true,
     faculty: 'Computer Science',
     skillsOrInterests: ['AI', 'Python'],
-    headline: 'Aspiring Mobile & AI Software Engineer',
-    bio: 'Computer Science undergrad passionate about machine learning systems and cross-platform Flutter development.',
+    headline: 'Computer Science Student',
+    bio: 'Computer science student building skills in software engineering and applied AI.',
     qualifications: {
-      degree: 'B.S. in Computer Science (Candidate)',
+      degree: 'B.S. in Computer Science',
       faculty: 'Computer Science',
       skills: ['AI', 'Python'],
-      githubUrl: 'https://github.com/jordan-cole-student',
-      linkedinUrl: 'https://linkedin.com/in/jordan-cole',
     },
     pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
     meetingUrl: 'https://meet.google.com/abc-defg-hij',
@@ -94,53 +74,82 @@ const baselineUsers = [
   },
 ];
 
+if (adminEmail && adminPassword) {
+  baselineUsers.push({
+    name: 'YMentor Administrator',
+    email: adminEmail,
+    password: adminPassword,
+    role: 'admin',
+    status: 'active',
+    isOnboarded: true,
+  });
+}
+
 async function run() {
   console.log(`Connecting to ${MONGODB_URI} ...`);
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   console.log('Connected.');
 
-  for (const u of baselineUsers) {
-    const existing = await User.findOne({ email: u.email.toLowerCase() });
-    if (existing) {
-      console.log(`  - ${u.email} already exists, skipping.`);
-    } else {
-      const hashedPassword = await bcrypt.hash(u.password, 10);
-      const user = new User({
-        ...u,
-        email: u.email.toLowerCase(),
+  for (const profile of baselineUsers) {
+    const { legacyEmail, ...userData } = profile;
+    let user = await User.findOne({ email: userData.email.toLowerCase() });
+    if (!user && legacyEmail) {
+      user = await User.findOne({ email: legacyEmail.toLowerCase() });
+    }
+
+    if (!user) {
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      user = new User({
+        ...userData,
+        email: userData.email.toLowerCase(),
         password: hashedPassword,
       });
       user.calculateLeaderboardScore();
       await user.save();
-      console.log(`  + Created ${u.role}: ${u.email}`);
+      console.log(`  + Created ${userData.role}: ${userData.email}`);
+    } else if (user.email.toLowerCase() !== userData.email.toLowerCase()) {
+      user.name = userData.name;
+      user.email = userData.email.toLowerCase();
+      user.password = await bcrypt.hash(userData.password, 10);
+      user.title = userData.title || user.title;
+      user.headline = userData.headline;
+      user.bio = userData.bio;
+      user.faculty = userData.faculty;
+      user.skillsOrInterests = userData.skillsOrInterests;
+      user.qualifications = userData.qualifications;
+      await user.save();
+      console.log(`  + Updated ${userData.role}: ${userData.email}`);
+    } else {
+      console.log(`  - ${userData.email} already exists, skipping.`);
     }
   }
 
-  const sarah = await User.findOne({ email: 'mentor.sarah@ymentor.com' });
-  const jordan = await User.findOne({ email: 'student.jordan@ymentor.com' });
+  const mentor = await User.findOne({ email: 'alex.morgan@ymentor.com' });
+  const mentee = await User.findOne({ email: 'sarah.chen@ymentor.com' });
 
-  if (sarah && jordan) {
-    let ws = await Workspace.findOne({ mentorId: sarah._id, menteeId: jordan._id });
-    if (!ws) {
-      ws = await Workspace.create({
-        mentorId: sarah._id,
-        menteeId: jordan._id,
+  if (mentor && mentee) {
+    const workspace = await Workspace.findOne({
+      mentorId: mentor._id,
+      menteeId: mentee._id,
+    });
+    if (!workspace) {
+      await Workspace.create({
+        mentorId: mentor._id,
+        menteeId: mentee._id,
         topic: 'AI Systems Architecture & Flutter Mentorship',
       });
       console.log('  + Created baseline workspace');
     }
   }
 
-  console.log('\n✅ Auto-seed baseline complete.');
-  console.log('Baseline accounts:');
-  console.log('  1. Admin:  admin@ymentor.com / admin123');
-  console.log('  2. Mentor: mentor.sarah@ymentor.com / mentor123');
-  console.log('  3. Mentee: student.jordan@ymentor.com / student123');
+  console.log('\nBaseline account setup complete.');
+  console.log('  Mentor: Alex Morgan (alex.morgan@ymentor.com)');
+  console.log('  Mentee: Sarah Chen (sarah.chen@ymentor.com)');
   await mongoose.disconnect();
-  process.exit(0);
 }
 
-run().catch((err) => {
-  console.error('Seed error:', err);
-  process.exit(1);
+run().catch(async (err) => {
+  console.error('Seed setup failed:', err);
+  await mongoose.disconnect();
+  process.exitCode = 1;
 });

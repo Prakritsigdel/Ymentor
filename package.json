@@ -1,7 +1,7 @@
 {
   "name": "ymentor-backend",
   "version": "1.0.0",
-  "description": "Ymentor zero-budget micro-mentorship marketplace - Node/Express/MongoDB API",
+  "description": "Ymentor mentorship marketplace API built with Node.js, Express, and MongoDB.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

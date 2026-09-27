@@ -1,12 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Required so the app can reach the Node/Express API at http://localhost:3000
-         (via `adb reverse tcp:3000 tcp:3000`) -->
+    <!-- Required for network access to the YMentor API over Wi-Fi or USB reverse. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:label="ymentor"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
