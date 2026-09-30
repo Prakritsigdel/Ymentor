@@ -4,6 +4,7 @@ const WorkspaceSchema = new mongoose.Schema(
   {
     mentorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     menteeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    planType: { type: String, enum: ['hourly', 'monthly'], default: 'hourly', index: true },
     topic: { type: String, default: 'Micro-Mentorship Workspace' },
     lastActivityAt: { type: Date, default: Date.now },
   },

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../widgets/hourly_session_updates.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../chat/chat_screen.dart';
 import '../../config/theme.dart';
 import '../../models/booking_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../utils/currency_formatter.dart';
 import '../../widgets/common/brand_footer.dart';
 
 class ActiveCallScreen extends StatefulWidget {
@@ -138,6 +141,42 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     }
   }
 
+  Future<void> _reportIssue(Booking booking) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Report a session issue'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Describe the issue'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Submit report')),
+        ],
+      ),
+    );
+    if (reason == null || reason.isEmpty) return;
+    try {
+      await ApiService.adminPost(
+          'disputes', {'bookingId': booking.id, 'reason': reason});
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Your report has been sent for review.')));
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -247,9 +286,39 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                                 ),
                               ],
                             ),
+                            if (b.planType == 'monthly' &&
+                                b.conversationId.isNotEmpty)
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                            conversationId: b.conversationId)),
+                                  ),
+                                  icon: const Icon(Icons.chat_bubble_outline),
+                                  label: const Text(
+                                      'Open monthly mentorship chat'),
+                                ),
+                              ),
+                            if (b.planType != 'monthly')
+                              HourlySessionUpdates(
+                                scheduledTime: b.scheduledTime,
+                                durationMinutes: b.durationMinutes,
+                              ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => _reportIssue(b),
+                                icon: const Icon(Icons.flag_outlined, size: 16),
+                                label: const Text('Report issue'),
+                              ),
+                            ),
                             const SizedBox(height: 6),
                             Text(
-                              '${b.durationMinutes} min · ${DateFormat('EEE, MMM d · h:mm a').format(b.scheduledTime)}',
+                              b.planType == 'monthly'
+                                  ? '30-day plan · ends ${DateFormat('MMM d, yyyy').format(b.planEndsAt ?? b.scheduledTime.add(const Duration(days: 30)))}'
+                                  : '${b.durationMinutes} min · ${DateFormat('EEE, MMM d · h:mm a').format(b.scheduledTime)}',
                               style: const TextStyle(
                                   color: AppColors.textSecondary, fontSize: 13),
                             ),
@@ -324,7 +393,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                                     ),
                                   ),
                                 ),
-                                if (isHeld && isMentee) ...[
+                                if (isHeld &&
+                                    isMentee &&
+                                    b.planType != 'monthly') ...[
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: ElevatedButton.icon(
@@ -362,7 +433,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         Text(label,
             style:
                 const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        Text('\$${amount.toStringAsFixed(2)}',
+        Text(CurrencyUtils.formatNPR(amount),
             style: TextStyle(
                 color: color, fontSize: 12, fontWeight: FontWeight.w700)),
       ],

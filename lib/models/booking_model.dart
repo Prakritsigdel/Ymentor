@@ -46,6 +46,9 @@ class Booking {
   final String escrowStatus;
   final BookingFinancials financials;
   final String status; // CONFIRMED, COMPLETED, CANCELLED
+  final String planType;
+  final DateTime? planEndsAt;
+  final String conversationId;
 
   Booking({
     required this.id,
@@ -56,10 +59,13 @@ class Booking {
     required this.durationMinutes,
     required this.scheduledTime,
     required this.meetingUrl,
-    this.platformFee = 4.0,
+    this.platformFee = 400.0,
     this.escrowStatus = 'held_in_escrow',
     required this.financials,
     required this.status,
+    this.planType = 'hourly',
+    this.planEndsAt,
+    this.conversationId = '',
   });
 
   static String _idOf(dynamic field) {
@@ -99,6 +105,9 @@ class Booking {
       escrowStatus: resolvedEscrow,
       financials: fin,
       status: json['status']?.toString() ?? 'CONFIRMED',
+      planType: json['planType']?.toString() ?? 'hourly',
+      planEndsAt: DateTime.tryParse(json['planEndsAt']?.toString() ?? ''),
+      conversationId: json['conversationId']?.toString() ?? '',
     );
   }
 

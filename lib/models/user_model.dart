@@ -18,7 +18,8 @@ class Qualifications {
     return Qualifications(
       degree: json['degree']?.toString() ?? '',
       faculty: json['faculty']?.toString() ?? '',
-      skills: (json['skills'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      skills:
+          (json['skills'] as List?)?.map((e) => e.toString()).toList() ?? [],
       githubUrl: json['githubUrl']?.toString() ?? '',
       linkedinUrl: json['linkedinUrl']?.toString() ?? '',
     );
@@ -38,14 +39,15 @@ class PricingTiers {
   final double tier60m;
   final double tier120m;
 
-  PricingTiers({this.tier30m = 12.0, this.tier60m = 20.0, this.tier120m = 38.0});
+  PricingTiers(
+      {this.tier30m = 1200.0, this.tier60m = 2000.0, this.tier120m = 3800.0});
 
   factory PricingTiers.fromJson(Map<String, dynamic>? json) {
     if (json == null) return PricingTiers();
     return PricingTiers(
-      tier30m: (json['tier30m'] as num?)?.toDouble() ?? 12.0,
-      tier60m: (json['tier60m'] as num?)?.toDouble() ?? 20.0,
-      tier120m: (json['tier120m'] as num?)?.toDouble() ?? 38.0,
+      tier30m: (json['tier30m'] as num?)?.toDouble() ?? 1200.0,
+      tier60m: (json['tier60m'] as num?)?.toDouble() ?? 2000.0,
+      tier120m: (json['tier120m'] as num?)?.toDouble() ?? 3800.0,
     );
   }
 
@@ -93,6 +95,10 @@ class AppUser {
   final double leaderboardScore;
   final double walletBalance;
   final double pendingEscrow;
+  final String verificationStatus;
+  final String verificationReason;
+  final Map<String, dynamic> mentorProfile;
+  final Map<String, dynamic> menteeProfile;
 
   AppUser({
     required this.id,
@@ -104,7 +110,7 @@ class AppUser {
     this.skillsOrInterests = const [],
     this.title = '',
     this.bio = '',
-    this.hourlyRate = 20.0,
+    this.hourlyRate = 2000.0,
     this.isOnboarded = false,
     this.avatarUrl = '',
     this.headline = '',
@@ -118,20 +124,50 @@ class AppUser {
     this.leaderboardScore = 0.0,
     this.walletBalance = 0.0,
     this.pendingEscrow = 0.0,
+    this.verificationStatus = 'NOT_SUBMITTED',
+    this.verificationReason = '',
+    this.mentorProfile = const {},
+    this.menteeProfile = const {},
   })  : qualifications = qualifications ?? Qualifications(),
         pricingTiers = pricingTiers ?? PricingTiers();
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
-    final wallet = json['wallet'] is Map ? json['wallet'] as Map<String, dynamic> : null;
+    final wallet =
+        json['wallet'] is Map ? json['wallet'] as Map<String, dynamic> : null;
     final balanceVal = wallet != null
         ? (wallet['balance'] as num?)?.toDouble()
         : (json['walletBalance'] as num?)?.toDouble();
-    final escrowVal = wallet != null ? (wallet['pendingEscrow'] as num?)?.toDouble() : 0.0;
+    final escrowVal =
+        wallet != null ? (wallet['pendingEscrow'] as num?)?.toDouble() : 0.0;
 
     // Resolve skills
     final skillsRaw = json['skillsOrInterests'] as List? ??
-        (json['qualifications'] is Map ? json['qualifications']['skills'] as List? : null);
+        (json['qualifications'] is Map
+            ? json['qualifications']['skills'] as List?
+            : null);
     final parsedSkills = skillsRaw?.map((e) => e.toString()).toList() ?? [];
+
+    final mentorProfile = json['mentorProfile'] is Map
+        ? Map<String, dynamic>.from(json['mentorProfile'] as Map)
+        : <String, dynamic>{};
+    final pricing = json['pricing'] is Map
+        ? Map<String, dynamic>.from(json['pricing'] as Map)
+        : <String, dynamic>{};
+    final questionnaireHourly =
+        (pricing['hourly'] as num?)?.toDouble();
+    final legacyHourly = (json['hourlyRate'] as num?)?.toDouble();
+    final questionnaireMonthly =
+        (pricing['monthly'] as num?)?.toDouble();
+    final legacyMonthly =
+        (mentorProfile['monthlyRate'] as num?)?.toDouble();
+    final resolvedHourly = questionnaireHourly ?? legacyHourly ?? 0;
+    final resolvedMonthly = questionnaireMonthly ?? legacyMonthly ?? 0;
+    mentorProfile['monthlyRate'] = resolvedMonthly;
+    mentorProfile['pricing'] = {
+      ...pricing,
+      'hourly': resolvedHourly,
+      'monthly': resolvedMonthly,
+    };
 
     return AppUser(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -140,24 +176,35 @@ class AppUser {
       role: (json['role']?.toString() ?? 'mentee').toLowerCase(),
       status: (json['status']?.toString() ?? 'active').toLowerCase(),
       faculty: json['faculty']?.toString() ??
-          (json['qualifications'] is Map ? json['qualifications']['faculty']?.toString() ?? '' : ''),
+          (json['qualifications'] is Map
+              ? json['qualifications']['faculty']?.toString() ?? ''
+              : ''),
       skillsOrInterests: parsedSkills,
       title: json['title']?.toString() ?? '',
       bio: json['bio']?.toString() ?? '',
-      hourlyRate: (json['hourlyRate'] as num?)?.toDouble() ?? 20.0,
+      hourlyRate: resolvedHourly,
       isOnboarded: json['isOnboarded'] == true,
       avatarUrl: json['avatarUrl']?.toString() ?? '',
       headline: json['headline']?.toString() ?? '',
       isIdentityVerified: json['isIdentityVerified'] == true,
       isSkillVerified: json['isSkillVerified'] == true,
-      qualifications: Qualifications.fromJson(json['qualifications'] as Map<String, dynamic>?),
-      pricingTiers: PricingTiers.fromJson(json['pricingTiers'] as Map<String, dynamic>?),
+      qualifications: Qualifications.fromJson(
+          json['qualifications'] as Map<String, dynamic>?),
+      pricingTiers:
+          PricingTiers.fromJson(json['pricingTiers'] as Map<String, dynamic>?),
       meetingUrl: json['meetingUrl']?.toString() ?? '',
       ratingAvg: (json['ratingAvg'] as num?)?.toDouble() ?? 5.0,
       totalSessions: (json['totalSessions'] as num?)?.toInt() ?? 0,
       leaderboardScore: (json['leaderboardScore'] as num?)?.toDouble() ?? 0.0,
       walletBalance: balanceVal ?? 0.0,
       pendingEscrow: escrowVal ?? 0.0,
+      verificationStatus:
+          json['verificationStatus']?.toString() ?? 'NOT_SUBMITTED',
+      verificationReason: json['verificationReason']?.toString() ?? '',
+      mentorProfile: mentorProfile,
+      menteeProfile: json['menteeProfile'] is Map
+          ? Map<String, dynamic>.from(json['menteeProfile'] as Map)
+          : const {},
     );
   }
 
@@ -172,6 +219,10 @@ class AppUser {
         'title': title,
         'bio': bio,
         'hourlyRate': hourlyRate,
+        'pricing': {
+          'hourly': hourlyRate,
+          'monthly': (mentorProfile['monthlyRate'] as num?)?.toDouble() ?? 0,
+        },
         'isOnboarded': isOnboarded,
         'avatarUrl': avatarUrl,
         'headline': headline,
@@ -188,6 +239,10 @@ class AppUser {
           'balance': walletBalance,
           'pendingEscrow': pendingEscrow,
         },
+        'verificationStatus': verificationStatus,
+        'verificationReason': verificationReason,
+        'mentorProfile': mentorProfile,
+        'menteeProfile': menteeProfile,
       };
 
   bool get isAdmin => role == 'admin';

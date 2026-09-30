@@ -20,6 +20,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   List<Workspace> _workspaces = [];
   Workspace? _selected;
   List<Note> _notes = [];
+  String _category = 'hourly';
   bool _loadingWorkspaces = true;
   bool _loadingNotes = false;
 
@@ -50,12 +51,21 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
         }
       }
 
+      final categorized =
+          ws.where((workspace) => workspace.planType == _category).toList();
       setState(() {
         _workspaces = ws;
-        _selected = refreshedSelection ?? (ws.isNotEmpty ? ws.first : null);
+        _selected = refreshedSelection != null &&
+                refreshedSelection.planType == _category
+            ? refreshedSelection
+            : (categorized.isNotEmpty ? categorized.first : null);
       });
 
-      if (_selected != null) await _loadNotes();
+      if (_selected != null) {
+        await _loadNotes();
+      } else if (mounted) {
+        setState(() => _notes = []);
+      }
     } catch (_) {
       // ignore
     } finally {
@@ -241,6 +251,34 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'hourly',
+                      icon: Icon(Icons.flash_on_outlined),
+                      label: Text('Hourly Workspaces'),
+                    ),
+                    ButtonSegment(
+                      value: 'monthly',
+                      icon: Icon(Icons.calendar_month_outlined),
+                      label: Text('Monthly Workspaces'),
+                    ),
+                  ],
+                  selected: {_category},
+                  onSelectionChanged: (selection) {
+                    final matching = _workspaces
+                        .where((workspace) =>
+                            workspace.planType == selection.first)
+                        .toList();
+                    setState(() {
+                      _category = selection.first;
+                      _selected = matching.isEmpty ? null : matching.first;
+                      _notes = [];
+                    });
+                    _loadNotes();
+                  },
+                ),
+                const SizedBox(height: 14),
                 if (!auth.isLoggedIn)
                   const _WorkspaceMessage(
                     icon: Icons.lock_outline,
@@ -251,11 +289,12 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     padding: EdgeInsets.symmetric(vertical: 48),
                     child: Center(child: CircularProgressIndicator()),
                   )
-                else if (_workspaces.isEmpty)
+                else if (_workspaces
+                    .where((workspace) => workspace.planType == _category)
+                    .isEmpty)
                   const _WorkspaceMessage(
                     icon: Icons.folder_open,
-                    message:
-                        'No active classroom workspaces yet.\nBook a mentorship session to automatically launch your shared workspace.',
+                    message: 'No workspaces in this category yet.',
                   )
                 else ...[
                   Padding(
@@ -270,6 +309,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                             Icon(Icons.school_outlined, color: AppColors.mint),
                       ),
                       items: _workspaces
+                          .where((workspace) => workspace.planType == _category)
                           .map((workspace) => DropdownMenuItem(
                                 value: workspace,
                                 child: Text(
@@ -424,7 +464,7 @@ class _NoteCardState extends State<_NoteCard> {
                   color: AppColors.surfaceRaised,
                   borderRadius: BorderRadius.circular(12),
                   border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [

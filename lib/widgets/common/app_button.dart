@@ -50,13 +50,13 @@ class _AppButtonState extends State<AppButton> {
   (Color bg, Color fg, Border? border) get _style {
     switch (widget.variant) {
       case AppButtonVariant.primary:
-        return (AppColors.mint, AppColors.background, null);
+        return (AppColors.primary, Colors.white, null);
       case AppButtonVariant.secondary:
         return (AppColors.surface, AppColors.textPrimary,
             Border.all(color: AppColors.border));
       case AppButtonVariant.outlined:
-        return (Colors.transparent, AppColors.mint,
-            Border.all(color: AppColors.mint, width: 1.5));
+        return (Colors.transparent, AppColors.primary,
+            Border.all(color: AppColors.primary, width: 1.5));
       case AppButtonVariant.ghost:
         return (Colors.transparent, AppColors.textSecondary, null);
       case AppButtonVariant.danger:
@@ -106,11 +106,9 @@ class _AppButtonState extends State<AppButton> {
             padding: _padding,
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: AppRadius.mdAll,
+              borderRadius: AppRadius.xlAll,
               border: border,
-              boxShadow: (!isDisabled && widget.variant == AppButtonVariant.primary)
-                  ? AppShadows.mintGlow
-                  : null,
+              boxShadow: null,
             ),
             child: Row(
               mainAxisSize: widget.isFullWidth ? MainAxisSize.max : MainAxisSize.min,

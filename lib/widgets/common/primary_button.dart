@@ -25,7 +25,7 @@ class PrimaryButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.primaryAccent,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
               color: AppColors.primaryAccent.withValues(alpha: 0.2),
@@ -40,20 +40,20 @@ class PrimaryButton extends StatelessWidget {
                 width: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Color(0xFF0B130F),
+                  color: Colors.white,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, color: const Color(0xFF0B130F), size: 20),
+                    Icon(icon, color: Colors.white, size: 20),
                     const SizedBox(width: 8),
                   ],
                   Text(
                     text,
                     style: const TextStyle(
-                      color: Color(0xFF0B130F),
+                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -86,13 +86,13 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         height: 52,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.surfaceBorder),
         ),
         child: Row(

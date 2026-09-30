@@ -11,6 +11,7 @@ import 'auth/login_screen.dart';
 import '../widgets/common/brand_footer.dart';
 import 'mentor_profile_sheet.dart';
 import '../widgets/common/app_logo_avatar.dart';
+import '../widgets/common/app_logo_widget.dart';
 
 const List<String> kSkillFilters = [
   'UI/UX',
@@ -31,6 +32,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
   late TabController _tabController;
   final _searchCtrl = TextEditingController();
   String? _selectedSkill;
+  String? _selectedPlanFilter;
   final Set<String> _savedMentorIds = {};
 
   List<AppUser> _mentors = [];
@@ -107,9 +109,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
       appBar: AppBar(
         title: Row(
           children: [
-            const AppLogoAvatar(size: 34, assetPath: 'assets/images/logo.png'),
+            const AppLogoWidget(height: 34),
             const SizedBox(width: 8),
-            Text('YMentor',
+            Text('Ymentor',
                 style: GoogleFonts.playfairDisplay(
                     fontWeight: FontWeight.bold, fontSize: 22)),
             if (user != null) ...[
@@ -184,138 +186,35 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
   }
 
   Widget _buildDiscoverTab(AppUser? currentUser) {
-    // If student has interests, suggest matching tags
     final studentInterests = currentUser?.skillsOrInterests ?? [];
 
     return RefreshIndicator(
       onRefresh: _load,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: TextField(
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: _DiscoveryHeader(
               controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Search mentors, skills, or expertise',
-                prefixIcon:
-                    const Icon(Icons.search, color: AppColors.textSecondary),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _load();
-                        },
-                      )
-                    : null,
-              ),
-              onSubmitted: (_) => _load(),
+              currentUser: currentUser,
+              studentInterests: studentInterests,
+              selectedSkill: _selectedSkill,
+              selectedPlanFilter: _selectedPlanFilter,
+              initials: _initials,
+              onSearch: _load,
+              onClearSearch: () {
+                _searchCtrl.clear();
+                _load();
+              },
+              onSkillChanged: (skill) {
+                setState(() => _selectedSkill = skill);
+                _load();
+              },
+              onPlanChanged: (plan) =>
+                  setState(() => _selectedPlanFilter = plan),
             ),
           ),
-
-          // Tag Chips row
-          SizedBox(
-            height: 42,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: kSkillFilters.map((skill) {
-                final selected = _selectedSkill == skill;
-                final isStudentTarget = studentInterests.contains(skill);
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: FilterChip(
-                    avatar: isStudentTarget && !selected
-                        ? const Icon(Icons.star,
-                            size: 14, color: AppColors.star)
-                        : null,
-                    label: Text(skill),
-                    selected: selected,
-                    selectedColor: AppColors.primary,
-                    checkmarkColor: AppColors.background,
-                    labelStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight:
-                          selected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 12,
-                    ),
-                    onSelected: (val) {
-                      setState(() => _selectedSkill = val ? skill : null);
-                      _load();
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          if (studentInterests.isNotEmpty && _selectedSkill == null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_awesome,
-                      color: AppColors.mint, size: 14),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Recommended for your interests: ${studentInterests.join(', ')}',
-                      style: const TextStyle(
-                          color: AppColors.mint,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    currentUser == null
-                        ? 'Find your next mentor'
-                        : 'Good to see you, ${currentUser.name.split(' ').first}',
-                    style: const TextStyle(
-                        fontSize: 21, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                Stack(
-                  children: [
-                    AppLogoAvatar(
-                      size: 36,
-                      imageUrl: currentUser?.avatarUrl,
-                      fallbackText: currentUser == null
-                          ? null
-                          : _initials(currentUser.name),
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: AppColors.mint,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.background, width: 1.5),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Expanded(child: _buildMentorList(_mentors)),
+          ..._mentorSlivers(_mentors),
         ],
       ),
     );
@@ -324,91 +223,281 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
   Widget _buildLeaderboardTab() {
     return RefreshIndicator(
       onRefresh: _load,
-      child: _buildMentorList(_leaderboard, showRank: true),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: _mentorSlivers(_leaderboard, showRank: true),
+      ),
     );
   }
 
-  Widget _buildMentorList(List<AppUser> mentors, {bool showRank = false}) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+  List<Widget> _mentorSlivers(List<AppUser> mentors, {bool showRank = false}) {
+    if (_loading) {
+      return const [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
 
     if (_error != null) {
-      return ListView(
-        children: [
-          const SizedBox(height: 80),
-          Icon(Icons.cloud_off,
-              size: 48, color: AppColors.textSecondary.withValues(alpha: 0.6)),
-          const SizedBox(height: 12),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(_error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary)),
-            ),
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _DiscoveryMessage(
+            icon: Icons.cloud_off,
+            message: _error!,
+            actionLabel: 'Retry',
+            onAction: _load,
           ),
-          const SizedBox(height: 16),
-          Center(
-              child:
-                  OutlinedButton(onPressed: _load, child: const Text('Retry'))),
-          const BrandFooter(),
-        ],
-      );
+        ),
+      ];
     }
 
-    if (mentors.isEmpty) {
-      return ListView(
-        padding: const EdgeInsets.only(top: 80),
-        children: [
-          const Icon(Icons.search_off,
-              size: 48, color: AppColors.textSecondary),
-          const SizedBox(height: 10),
-          const Center(
-            child: Text('No mentors found matching your filters.',
-                style: TextStyle(color: AppColors.textSecondary)),
+    final filteredMentors = mentors.where((mentor) {
+      if (_selectedPlanFilter == 'Offers Monthly Plans') {
+        return ((mentor.mentorProfile['monthlyRate'] as num?)?.toDouble() ??
+                0) >
+            0;
+      }
+      if (_selectedPlanFilter == 'Hourly Micro-Sessions')
+        return mentor.hourlyRate > 0;
+      return true;
+    }).toList();
+
+    if (filteredMentors.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _DiscoveryMessage(
+            icon: Icons.search_off,
+            message: 'No mentors found matching your filters.',
+            actionLabel: 'Clear Filters',
+            onAction: () {
+              setState(() {
+                _selectedSkill = null;
+                _selectedPlanFilter = null;
+                _searchCtrl.clear();
+              });
+              _load();
+            },
           ),
-          const SizedBox(height: 12),
-          Center(
-            child: OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  _selectedSkill = null;
-                  _searchCtrl.clear();
-                });
-                _load();
-              },
-              child: const Text('Clear Filters'),
-            ),
-          ),
-          const BrandFooter(),
-        ],
-      );
+        ),
+      ];
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      children: [
-        ...mentors.asMap().entries.map((entry) {
-          final mentor = entry.value;
-          return MentorCard(
-            mentor: mentor,
-            rank: showRank ? entry.key + 1 : null,
-            onTap: () => _openMentor(mentor.id),
-            isSaved: _savedMentorIds.contains(mentor.id),
-            onSaveChanged: (saved) => setState(() {
-              if (saved) {
-                _savedMentorIds.add(mentor.id);
-              } else {
-                _savedMentorIds.remove(mentor.id);
-              }
-            }),
-          );
-        }),
-        const BrandFooter(),
-      ],
-    );
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final mentor = filteredMentors[index];
+              return MentorCard(
+                mentor: mentor,
+                rank: showRank ? index + 1 : null,
+                onTap: () => _openMentor(mentor.id),
+                isSaved: _savedMentorIds.contains(mentor.id),
+                onSaveChanged: (saved) => setState(() {
+                  if (saved) {
+                    _savedMentorIds.add(mentor.id);
+                  } else {
+                    _savedMentorIds.remove(mentor.id);
+                  }
+                }),
+              );
+            },
+            childCount: filteredMentors.length,
+          ),
+        ),
+      ),
+      const SliverToBoxAdapter(child: BrandFooter()),
+    ];
   }
 
   void _openMentor(String mentorId) {
     showMentorProfileSheet(context, mentorId);
   }
+}
+
+class _DiscoveryHeader extends StatelessWidget {
+  final TextEditingController controller;
+  final AppUser? currentUser;
+  final List<String> studentInterests;
+  final String? selectedSkill;
+  final String? selectedPlanFilter;
+  final String Function(String) initials;
+  final VoidCallback onSearch;
+  final VoidCallback onClearSearch;
+  final ValueChanged<String?> onSkillChanged;
+  final ValueChanged<String?> onPlanChanged;
+
+  const _DiscoveryHeader({
+    required this.controller,
+    required this.currentUser,
+    required this.studentInterests,
+    required this.selectedSkill,
+    required this.selectedPlanFilter,
+    required this.initials,
+    required this.onSearch,
+    required this.onClearSearch,
+    required this.onSkillChanged,
+    required this.onPlanChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              child: TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Search mentors, skills, or expertise',
+                  prefixIcon:
+                      const Icon(Icons.search, color: AppColors.textSecondary),
+                  suffixIcon: controller.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: onClearSearch,
+                        )
+                      : null,
+                ),
+                onSubmitted: (_) => onSearch(),
+              ),
+            ),
+            _FilterRow(
+              values: kSkillFilters,
+              selected: selectedSkill,
+              leadingStarValues: studentInterests,
+              onChanged: onSkillChanged,
+            ),
+            _FilterRow(
+              values: const ['Offers Monthly Plans', 'Hourly Micro-Sessions'],
+              selected: selectedPlanFilter,
+              onChanged: onPlanChanged,
+            ),
+            if (studentInterests.isNotEmpty && selectedSkill == null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                child: Row(
+                  children: [
+                    const Icon(Icons.auto_awesome,
+                        color: AppColors.mint, size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Recommended for your interests: ${studentInterests.join(', ')}',
+                        style: const TextStyle(
+                            color: AppColors.mint,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      currentUser == null
+                          ? 'Find your next mentor'
+                          : 'Good to see you, ${currentUser!.name.split(' ').first}',
+                      style: const TextStyle(
+                          fontSize: 21, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  AppLogoAvatar(
+                    size: 36,
+                    imageUrl: currentUser?.avatarUrl,
+                    fallbackText: currentUser == null
+                        ? null
+                        : initials(currentUser!.name),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _FilterRow extends StatelessWidget {
+  final List<String> values;
+  final List<String> leadingStarValues;
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterRow({
+    required this.values,
+    this.leadingStarValues = const [],
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 42,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          children: values
+              .map(
+                (value) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: FilterChip(
+                    avatar:
+                        leadingStarValues.contains(value) && selected != value
+                            ? const Icon(Icons.star,
+                                size: 14, color: AppColors.star)
+                            : null,
+                    label: Text(value),
+                    selected: selected == value,
+                    selectedColor: AppColors.primary,
+                    onSelected: (isSelected) =>
+                        onChanged(isSelected ? value : null),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      );
+}
+
+class _DiscoveryMessage extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const _DiscoveryMessage({
+    required this.icon,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 48, color: AppColors.textSecondary),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary)),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(onPressed: onAction, child: Text(actionLabel)),
+          const BrandFooter(),
+        ],
+      );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/theme.dart';
 import '../models/user_model.dart';
+import '../utils/currency_formatter.dart';
 import 'common/app_logo_avatar.dart';
 
 class MentorCard extends StatelessWidget {
@@ -36,7 +37,7 @@ class MentorCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Colors.white10),
+        side: const BorderSide(color: AppColors.border),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -161,11 +162,16 @@ class MentorCard extends StatelessWidget {
                     AppColors.mint,
                   ),
                   _pricePill(
-                    '\$${mentor.hourlyRate.toStringAsFixed(0)} / hour',
-                  ),
-                  _pricePill(
-                    'From \$${mentor.pricingTiers.tier30m.toStringAsFixed(0)} / session',
-                  ),
+                      '${CurrencyUtils.formatCompactNPR(mentor.hourlyRate)} / hr'),
+                  if (((mentor.mentorProfile['monthlyRate'] as num?)
+                              ?.toDouble() ??
+                          0) >
+                      0)
+                    _pricePill(
+                      '${CurrencyUtils.formatCompactNPR((mentor.mentorProfile['monthlyRate'] as num?)?.toDouble() ?? 0)} / mo',
+                    ),
+                  if (mentor.isIdentityVerified)
+                    _pill(Icons.verified, 'KYC verified', AppColors.mint),
                 ],
               ),
               const SizedBox(height: 14),

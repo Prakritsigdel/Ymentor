@@ -8,6 +8,7 @@ import '../../models/user_model.dart';
 import '../../models/workspace_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../utils/currency_formatter.dart';
 import '../../widgets/common/brand_footer.dart';
 
 class MentorDashboardScreen extends StatefulWidget {
@@ -257,14 +258,14 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                     Expanded(
                         child: _statCard(
                             'Virtual Wallet Balance',
-                            '\$${user.walletBalance.toStringAsFixed(2)}',
+                            CurrencyUtils.formatNPR(user.walletBalance),
                             AppColors.mint,
                             Icons.account_balance_wallet)),
                     const SizedBox(width: 10),
                     Expanded(
                         child: _statCard(
                             'Pending Escrow Balance',
-                            '\$${user.pendingEscrow.toStringAsFixed(2)}',
+                            CurrencyUtils.formatNPR(user.pendingEscrow),
                             AppColors.star,
                             Icons.lock_clock)),
                   ],
@@ -440,7 +441,7 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                               child: TextField(
                                 controller: _tier30Ctrl,
                                 decoration: const InputDecoration(
-                                    labelText: '30m (\$)', prefixText: '\$'),
+                                    labelText: '30m (NPR)', prefixText: 'NPR '),
                                 keyboardType: TextInputType.number,
                               ),
                             ),
@@ -449,7 +450,7 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                               child: TextField(
                                 controller: _tier60Ctrl,
                                 decoration: const InputDecoration(
-                                    labelText: '60m (\$)', prefixText: '\$'),
+                                    labelText: '60m (NPR)', prefixText: 'NPR '),
                                 keyboardType: TextInputType.number,
                               ),
                             ),
@@ -458,7 +459,8 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                               child: TextField(
                                 controller: _tier120Ctrl,
                                 decoration: const InputDecoration(
-                                    labelText: '120m (\$)', prefixText: '\$'),
+                                    labelText: '120m (NPR)',
+                                    prefixText: 'NPR '),
                                 keyboardType: TextInputType.number,
                               ),
                             ),

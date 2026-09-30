@@ -27,7 +27,8 @@ const baselineUsers = [
     status: 'active',
     isOnboarded: true,
     title: 'Senior Engineer',
-    hourlyRate: 20,
+    hourlyRate: 2000,
+    pricing: { hourly: 2000, monthly: 20000 },
     skillsOrInterests: ['AI', 'Python', 'Flutter'],
     headline: 'Senior Engineer & Technical Mentor',
     bio: 'Senior software engineer helping teams design reliable AI and mobile applications.',
@@ -37,12 +38,13 @@ const baselineUsers = [
       faculty: 'Software Engineering',
       skills: ['AI', 'Python', 'Flutter'],
     },
-    pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
+    pricingTiers: { tier30m: 1200, tier60m: 2000, tier120m: 3800 },
+    mentorProfile: { monthlyRate: 20000, maxMentees: 5, primaryDomain: 'Software Engineering' },
     meetingUrl: 'https://meet.google.com/ymentor-alex-mentor',
     ratingAvg: 4.95,
     totalSessions: 38,
-    wallet: { balance: 320.0, pendingEscrow: 16.0 },
-    walletBalance: 320.0,
+    wallet: { balance: 3200, pendingEscrow: 400 },
+    walletBalance: 3200,
     isIdentityVerified: true,
     isSkillVerified: true,
   },
@@ -63,7 +65,7 @@ const baselineUsers = [
       faculty: 'Computer Science',
       skills: ['AI', 'Python'],
     },
-    pricingTiers: { tier30m: 12.0, tier60m: 20.0, tier120m: 38.0 },
+    pricingTiers: { tier30m: 1200, tier60m: 2000, tier120m: 3800 },
     meetingUrl: 'https://meet.google.com/abc-defg-hij',
     ratingAvg: 5.0,
     totalSessions: 2,
@@ -120,6 +122,13 @@ async function run() {
       await user.save();
       console.log(`  + Updated ${userData.role}: ${userData.email}`);
     } else {
+      user.hourlyRate = userData.hourlyRate || user.hourlyRate;
+      user.pricing = userData.pricing || user.pricing;
+      user.mentorProfile = {
+        ...(user.mentorProfile?.toObject?.() || user.mentorProfile || {}),
+        ...(userData.mentorProfile || {}),
+      };
+      await user.save();
       console.log(`  - ${userData.email} already exists, skipping.`);
     }
   }

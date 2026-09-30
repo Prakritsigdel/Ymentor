@@ -12,12 +12,16 @@ class PendingBooking {
   final int durationMinutes;
   final double price;
   final String? slotId;
+  final bool monthlyPlan;
+  final DateTime? scheduledTime;
 
   PendingBooking({
     required this.mentorId,
     required this.durationMinutes,
     required this.price,
     this.slotId,
+    this.monthlyPlan = false,
+    this.scheduledTime,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +29,8 @@ class PendingBooking {
         'durationMinutes': durationMinutes,
         'price': price,
         'slotId': slotId,
+        'monthlyPlan': monthlyPlan,
+        'scheduledTime': scheduledTime?.toIso8601String(),
       };
 
   factory PendingBooking.fromJson(Map<String, dynamic> json) => PendingBooking(
@@ -32,6 +38,9 @@ class PendingBooking {
         durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 30,
         price: (json['price'] as num?)?.toDouble() ?? 0.0,
         slotId: json['slotId']?.toString(),
+        monthlyPlan: json['monthlyPlan'] == true,
+        scheduledTime:
+            DateTime.tryParse(json['scheduledTime']?.toString() ?? ''),
       );
 }
 
@@ -42,6 +51,7 @@ class AuthProvider extends ChangeNotifier {
   PendingBooking? _pendingBooking;
 
   AppUser? get user => _user;
+  AppUser? get currentUser => _user;
   String? get token => _token;
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _user != null && _token != null && _token!.isNotEmpty;
@@ -64,10 +74,12 @@ class AuthProvider extends ChangeNotifier {
     ApiService.onUnauthorized = () {
       logout();
     };
-    _restore();
+    checkAuthStatus();
   }
 
-  Future<void> _restore() async {
+  Future<void> checkAuthStatus() async {
+    _isLoading = true;
+    notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
       var token = await _secureStorage.read(key: _kToken);
@@ -87,12 +99,18 @@ class AuthProvider extends ChangeNotifier {
       await prefs.remove(_kUser);
 
       if (token != null && userJson != null) {
-        _token = token;
-        ApiService.authToken = token;
         final decoded = jsonDecode(userJson);
-        if (decoded is Map<String, dynamic>) {
+        if (decoded is Map<String, dynamic> &&
+            token.trim().isNotEmpty &&
+            decoded['role'] != null) {
+          _token = token;
+          ApiService.authToken = token;
           _user = AppUser.fromJson(decoded);
+        } else {
+          await _clearStoredCredentials(prefs);
         }
+      } else if (token != null || userJson != null) {
+        await _clearStoredCredentials(prefs);
       }
 
       final pendingJson = prefs.getString(_kPending);
@@ -105,6 +123,16 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _clearStoredCredentials(SharedPreferences prefs) async {
+    _token = null;
+    _user = null;
+    ApiService.authToken = null;
+    await _secureStorage.delete(key: _kToken);
+    await _secureStorage.delete(key: _kUser);
+    await prefs.remove(_kToken);
+    await prefs.remove(_kUser);
   }
 
   Future<void> _persist() async {
@@ -122,16 +150,37 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<bool> login(String email, String password) async {
     final data = await ApiService.login(email: email, password: password);
-    _token = data['token']?.toString();
-    ApiService.authToken = _token;
+    final token = data['token']?.toString();
+    final rawUser = data['user'];
+    if (token == null ||
+        token.trim().isEmpty ||
+        rawUser is! Map<String, dynamic> ||
+        rawUser['role'] == null) {
+      throw const FormatException(
+        'The server returned an incomplete sign-in response. Please try again.',
+      );
+    }
 
-    final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
-    _user = AppUser.fromJson(userMap);
+    final user = AppUser.fromJson(rawUser);
+    if (user.id.isEmpty ||
+        !const {'admin', 'mentor', 'mentee'}.contains(user.role)) {
+      throw const FormatException(
+        'The account information returned by the server is invalid.',
+      );
+    }
 
-    await _persist();
-    notifyListeners();
+    _token = token;
+    _user = user;
+    ApiService.authToken = token;
+    _isLoading = false;
+    try {
+      await _persist();
+    } finally {
+      notifyListeners();
+    }
+    return isLoggedIn;
   }
 
   Future<void> register({
@@ -159,7 +208,8 @@ class AuthProvider extends ChangeNotifier {
     _token = data['token']?.toString();
     ApiService.authToken = _token;
 
-    final userMap = data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+    final userMap =
+        data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
     _user = AppUser.fromJson(userMap);
 
     await _persist();
@@ -192,6 +242,8 @@ class AuthProvider extends ChangeNotifier {
     String? faculty,
     List<String>? skillsOrInterests,
     double? hourlyRate,
+    double? monthlyRate,
+    int? maxMentees,
     PricingTiers? pricingTiers,
     String? meetingUrl,
   }) async {
@@ -202,6 +254,8 @@ class AuthProvider extends ChangeNotifier {
       faculty: faculty,
       skillsOrInterests: skillsOrInterests,
       hourlyRate: hourlyRate,
+      monthlyRate: monthlyRate,
+      maxMentees: maxMentees,
       pricingTiers: pricingTiers,
       meetingUrl: meetingUrl,
     );
@@ -226,12 +280,12 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     _token = null;
     ApiService.authToken = null;
-    final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.delete(key: _kToken);
-    await _secureStorage.delete(key: _kUser);
-    await prefs.remove(_kToken);
-    await prefs.remove(_kUser);
-    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _clearStoredCredentials(prefs);
+    } finally {
+      notifyListeners();
+    }
   }
 
   Future<void> savePendingBooking(PendingBooking booking) async {

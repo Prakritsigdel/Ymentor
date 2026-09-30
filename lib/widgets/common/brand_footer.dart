@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
-import 'app_logo_avatar.dart';
+import 'app_logo_widget.dart';
 
 class BrandFooter extends StatelessWidget {
   const BrandFooter({super.key});
@@ -37,20 +37,17 @@ class BrandFooter extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const AppLogoAvatar(
-                size: 36,
-                assetPath: 'assets/images/logo.png',
-              ),
+              const AppLogoWidget(height: 36),
               const SizedBox(width: 10),
               Text(
-                'YMentor',
+                'Ymentor',
                 style: GoogleFonts.playfairDisplay(
                   color: AppColors.cream,
                   fontSize: 22,
