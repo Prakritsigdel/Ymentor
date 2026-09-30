@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import 'discovery_screen.dart';
 import 'bookings/active_call_screen.dart';
@@ -7,6 +8,7 @@ import 'workspace/workspace_screen.dart';
 import 'dashboard/mentor_dashboard_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/login_screen.dart';
+import '../widgets/auth_required_sheet.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -28,8 +30,12 @@ class _RootShellState extends State<RootShell> {
       const DiscoveryScreen(),
       _guarded(auth, const ActiveCallScreen(), title: 'Mentorship Sessions'),
       _guarded(auth, const WorkspaceScreen(), title: 'Classroom Workspace'),
-      if (isMentor) _guarded(auth, const MentorDashboardScreen(), title: 'Mentor Dashboard'),
-      if (isAdmin) _guarded(auth, const AdminDashboardScreen(), title: 'Admin Control Panel'),
+      if (isMentor)
+        _guarded(auth, const MentorDashboardScreen(),
+            title: 'Mentor Dashboard'),
+      if (isAdmin)
+        _guarded(auth, const AdminDashboardScreen(),
+            title: 'Admin Control Panel'),
     ];
 
     final navItems = <BottomNavigationBarItem>[
@@ -69,7 +75,18 @@ class _RootShellState extends State<RootShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: safeIndex,
         items: navItems,
-        onTap: (i) => setState(() => _index = i),
+        onTap: (i) {
+          if (!auth.isLoggedIn && i != 0) {
+            showAuthRequiredSheet(
+              context,
+              action: i == 2
+                  ? 'open your workspace and upload documents'
+                  : 'view your sessions',
+            );
+            return;
+          }
+          setState(() => _index = i);
+        },
       ),
     );
   }
@@ -85,11 +102,13 @@ class _RootShellState extends State<RootShell> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock_outline, size: 48, color: Colors.white54),
+              const Icon(Icons.lock_outline,
+                  size: 48, color: AppColors.textSecondary),
               const SizedBox(height: 14),
               Text(
                 'Log in to access $title',
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),

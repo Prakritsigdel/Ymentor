@@ -4,7 +4,11 @@ class WorkspaceParty {
   final String email;
   final String avatarUrl;
 
-  WorkspaceParty({required this.id, required this.name, this.email = '', this.avatarUrl = ''});
+  WorkspaceParty(
+      {required this.id,
+      required this.name,
+      this.email = '',
+      this.avatarUrl = ''});
 
   factory WorkspaceParty.fromDynamic(dynamic field) {
     if (field is Map) {
@@ -23,15 +27,23 @@ class Workspace {
   final String id;
   final WorkspaceParty mentor;
   final WorkspaceParty mentee;
+  final String planType;
   final String topic;
 
-  Workspace({required this.id, required this.mentor, required this.mentee, required this.topic});
+  Workspace({
+    required this.id,
+    required this.mentor,
+    required this.mentee,
+    required this.planType,
+    required this.topic,
+  });
 
   factory Workspace.fromJson(Map<String, dynamic> json) {
     return Workspace(
       id: (json['_id'] ?? '').toString(),
       mentor: WorkspaceParty.fromDynamic(json['mentorId']),
       mentee: WorkspaceParty.fromDynamic(json['menteeId']),
+      planType: (json['planType']?.toString() ?? 'hourly').toLowerCase(),
       topic: json['topic'] ?? 'Workspace',
     );
   }
@@ -66,7 +78,8 @@ class NoteComment {
       senderId: (json['senderId'] ?? '').toString(),
       senderName: json['senderName'] ?? 'User',
       message: json['message'] ?? '',
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 }

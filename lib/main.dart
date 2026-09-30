@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_controller.dart';
 import 'screens/root_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
-import 'widgets/common/app_logo_avatar.dart';
+import 'widgets/common/app_logo_widget.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -21,7 +22,14 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-  runApp(const YmentorApp());
+  final themeController = ThemeController();
+  runApp(
+    ChangeNotifierProvider.value(
+      value: themeController,
+      child: const YmentorApp(),
+    ),
+  );
+  themeController.load();
 }
 
 class YmentorApp extends StatelessWidget {
@@ -35,7 +43,9 @@ class YmentorApp extends StatelessWidget {
         title: 'Ymentor',
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: context.watch<ThemeController>().mode,
         home: const AuthWrapper(),
       ),
     );
@@ -63,10 +73,7 @@ class AuthWrapper extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const AppLogoAvatar(
-                size: 72,
-                assetPath: 'assets/images/logo.png',
-              ),
+              const AppLogoWidget(height: 72),
               const SizedBox(height: 18),
               const Text(
                 'Ymentor',

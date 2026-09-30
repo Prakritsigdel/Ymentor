@@ -13,17 +13,61 @@ const QualificationsSchema = new mongoose.Schema(
 
 const PricingTiersSchema = new mongoose.Schema(
   {
-    tier30m: { type: Number, default: 12.0 },
-    tier60m: { type: Number, default: 20.0 },
-    tier120m: { type: Number, default: 38.0 },
+    tier30m: { type: Number, default: 1200, min: 0, validate: Number.isInteger },
+    tier60m: { type: Number, default: 2000, min: 0, validate: Number.isInteger },
+    tier120m: { type: Number, default: 3800, min: 0, validate: Number.isInteger },
+  },
+  { _id: false }
+);
+
+const PricingSchema = new mongoose.Schema(
+  {
+    hourly: { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    monthly: { type: Number, default: 0, min: 0, validate: Number.isInteger },
   },
   { _id: false }
 );
 
 const WalletSchema = new mongoose.Schema(
   {
-    balance: { type: Number, default: 100.0 },
-    pendingEscrow: { type: Number, default: 0.0 },
+    balance: { type: Number, default: 1000, min: 0, validate: Number.isInteger },
+    pendingEscrow: { type: Number, default: 0, min: 0, validate: Number.isInteger },
+  },
+  { _id: false }
+);
+
+const MentorProfileSchema = new mongoose.Schema(
+  {
+    dateOfBirth: { type: Date },
+    location: { type: String, default: '' },
+    timezone: { type: String, default: '' },
+    primaryDomain: { type: String, default: '' },
+    subSkills: { type: [String], default: [] },
+    yearsExperience: { type: Number, default: 0 },
+    currentOrganization: { type: String, default: '' },
+    monthlyRate: { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    maxMentees: { type: Number, default: 0 },
+    weeklyAvailableHours: { type: Number, default: 0 },
+    fluentLanguages: { type: [String], default: [] },
+    qualificationDocUrl: { type: String, default: '' },
+    identityDocUrl: { type: String, default: '' },
+    governmentIdType: { type: String, default: '' },
+    portfolioUrl: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const MenteeProfileSchema = new mongoose.Schema(
+  {
+    academicStatus: { type: String, default: '' },
+    fieldOfInterest: { type: String, default: '' },
+    primaryGoal: { type: String, default: '' },
+    targetSkills: { type: [String], default: [] },
+    competencyLevel: { type: String, default: 'beginner' },
+    preferredMode: { type: String, default: 'not_sure' },
+    mentorStyle: { type: String, default: '' },
+    targetBudget: { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    weeklyCommitmentHours: { type: Number, default: 0 },
   },
   { _id: false }
 );
@@ -38,6 +82,7 @@ const UserSchema = new mongoose.Schema(
       enum: ['admin', 'mentor', 'mentee'],
       default: 'mentee',
     },
+    currency: { type: String, enum: ['NPR'], default: 'NPR' },
     status: {
       type: String,
       enum: ['pending_approval', 'active', 'suspended'],
@@ -47,9 +92,10 @@ const UserSchema = new mongoose.Schema(
     skillsOrInterests: { type: [String], default: [] },
     title: { type: String, default: '' },
     bio: { type: String, default: '' },
-    hourlyRate: { type: Number, default: 20.0 },
+    hourlyRate: { type: Number, default: 2000, min: 0, validate: Number.isInteger },
+    pricing: { type: PricingSchema, default: () => ({}) },
     isOnboarded: { type: Boolean, default: false },
-    wallet: { type: WalletSchema, default: () => ({ balance: 100.0, pendingEscrow: 0.0 }) },
+    wallet: { type: WalletSchema, default: () => ({ balance: 1000, pendingEscrow: 0 }) },
     avatarUrl: { type: String, default: '' },
     headline: { type: String, default: '' },
     isIdentityVerified: { type: Boolean, default: false },
@@ -60,7 +106,15 @@ const UserSchema = new mongoose.Schema(
     ratingAvg: { type: Number, default: 5.0 },
     totalSessions: { type: Number, default: 0 },
     leaderboardScore: { type: Number, default: 0.0 },
-    walletBalance: { type: Number, default: 100.0 },
+    walletBalance: { type: Number, default: 1000, min: 0, validate: Number.isInteger },
+    verificationStatus: {
+      type: String,
+      enum: ['NOT_SUBMITTED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'],
+      default: 'NOT_SUBMITTED',
+    },
+    verificationReason: { type: String, default: '' },
+    mentorProfile: { type: MentorProfileSchema, default: () => ({}) },
+    menteeProfile: { type: MenteeProfileSchema, default: () => ({}) },
   },
   { timestamps: true }
 );
@@ -100,6 +154,8 @@ UserSchema.methods.calculateLeaderboardScore = function () {
 UserSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.password;
+    delete ret.mentorProfile?.qualificationDocUrl;
+    delete ret.mentorProfile?.identityDocUrl;
     // ensure walletBalance is present
     if (ret.wallet && ret.wallet.balance !== undefined) {
       ret.walletBalance = ret.wallet.balance;

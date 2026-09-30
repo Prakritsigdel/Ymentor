@@ -32,7 +32,7 @@ class YmLogo extends StatelessWidget {
       child: ClipOval(
         child: useImageAsset
             ? Image.asset(
-                'assets/images/logo.png',
+                'assets/images/app_logo.png',
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => _buildNativeLogo(),
               )

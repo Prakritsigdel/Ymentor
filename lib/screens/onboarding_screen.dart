@@ -33,7 +33,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final Set<String> _selectedInterests = {'Python', 'Flutter'};
   final _titleCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
-  final _hourlyRateCtrl = TextEditingController(text: '20');
+  final _hourlyRateCtrl = TextEditingController(text: '1500');
   bool _submitting = false;
   String? _error;
 
@@ -79,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final auth = context.read<AuthProvider>();
       final isMentor = auth.isMentor;
       final rate = isMentor
-          ? (double.tryParse(_hourlyRateCtrl.text.trim()) ?? 20.0)
+          ? (double.tryParse(_hourlyRateCtrl.text.trim()) ?? 2000.0)
           : null;
 
       await auth.completeOnboarding(
@@ -268,7 +268,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
               if (isMentor) ...[
                 const SizedBox(height: 20),
-                const Text('Base Hourly Mentorship Rate (USD \$)',
+                const Text('Base Hourly Mentorship Rate (NPR)',
                     style:
                         TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                 const SizedBox(height: 8),
@@ -276,8 +276,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   controller: _hourlyRateCtrl,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.attach_money, color: AppColors.mint),
-                    hintText: '20',
+                    prefixText: 'NPR ',
+                    prefixStyle: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                    hintText: '1500',
                   ),
                 ),
               ],

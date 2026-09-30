@@ -3,17 +3,24 @@ import 'package:provider/provider.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../utils/currency_formatter.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final String mentorId;
   final int durationMinutes;
   final double price;
+  final double monthlyPrice;
+  final String planType;
+  final DateTime? scheduledTime;
 
   const CheckoutScreen({
     super.key,
     required this.mentorId,
     required this.durationMinutes,
     required this.price,
+    this.monthlyPrice = 0,
+    this.planType = 'hourly',
+    this.scheduledTime,
   });
 
   @override
@@ -22,11 +29,36 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _processing = false;
+  late bool _monthlyPlan;
+  double? _calculatedFee;
   String? _error;
 
-  double get _platformFee => 4.0;
+  @override
+  void initState() {
+    super.initState();
+    _monthlyPlan = widget.planType == 'monthly';
+    _loadFee();
+  }
+
+  double get _amount => _monthlyPlan ? widget.monthlyPrice : widget.price;
+  double get _platformFee => _calculatedFee ?? (_amount * 0.2).roundToDouble();
   double get _mentorPayout =>
-      double.parse((widget.price - _platformFee).toStringAsFixed(2));
+      double.parse((_amount - _platformFee).toStringAsFixed(2));
+
+  Future<void> _loadFee() async {
+    final amount = _amount;
+    try {
+      final result = await ApiService.getPlatformFee(amount);
+      if (mounted) {
+        setState(() => _calculatedFee = (result['fee'] as num).toDouble());
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'Unable to verify the platform fee. Try again before checkout.');
+      }
+    }
+  }
 
   Future<void> _confirmPayment() async {
     final auth = context.read<AuthProvider>();
@@ -39,18 +71,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final result = await ApiService.checkout(
-        menteeId: user.id,
-        mentorId: widget.mentorId,
-        durationMinutes: widget.durationMinutes,
-        price: widget.price,
-      );
+      final result = _monthlyPlan
+          ? await ApiService.checkoutMonthly(widget.mentorId)
+          : await ApiService.checkout(
+              menteeId: user.id,
+              mentorId: widget.mentorId,
+              durationMinutes: widget.durationMinutes,
+              price: widget.price,
+              scheduledTime: widget.scheduledTime,
+            );
       await auth.refreshUser();
       if (!mounted) return;
+      final receipt = _monthlyPlan
+          ? {
+              'transactionId': result['booking']?['_id'] ?? '-',
+              'grossAmount': _amount,
+              'platformProtectionFee': _platformFee,
+              'mentorNetPayout': _mentorPayout,
+              'escrowStatus': 'held_in_escrow',
+              'remainingWallet': auth.user?.walletBalance ?? 0,
+            }
+          : result['receipt'] ?? {};
       await showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => _ReceiptDialog(receipt: result['receipt'] ?? {}),
+        builder: (_) => _ReceiptDialog(receipt: receipt),
       );
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -71,6 +116,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            SegmentedButton<bool>(
+              segments: [
+                const ButtonSegment(
+                    value: false, label: Text('Hourly session')),
+                if (widget.monthlyPrice > 0)
+                  const ButtonSegment(value: true, label: Text('Monthly plan')),
+              ],
+              selected: {_monthlyPlan},
+              onSelectionChanged: (selection) {
+                setState(() {
+                  _monthlyPlan = selection.first;
+                  _calculatedFee = null;
+                });
+                _loadFee();
+              },
+            ),
+            const SizedBox(height: 16),
             const Text('Session Order Breakdown',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 14),
@@ -79,32 +141,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _row('Session duration',
-                        '${widget.durationMinutes} minutes'),
+                    if (!_monthlyPlan)
+                      _row('Session duration',
+                          '${widget.durationMinutes ~/ 60} hour(s)'),
+                    if (_monthlyPlan) _row('Plan period', '30 days'),
                     const SizedBox(height: 10),
-                    _row('Gross session fee',
-                        '\$${widget.price.toStringAsFixed(2)}'),
+                    _row('Gross session fee', CurrencyUtils.formatNPR(_amount)),
                     const SizedBox(height: 10),
                     _row('Platform protection fee (escrow)',
-                        '\$${_platformFee.toStringAsFixed(2)}',
+                        CurrencyUtils.formatNPR(_platformFee),
                         color: AppColors.textSecondary),
                     const Divider(height: 24, color: AppColors.border),
                     _row('Mentor net payout (held in escrow)',
-                        '\$${_mentorPayout.toStringAsFixed(2)}',
+                        CurrencyUtils.formatNPR(_mentorPayout),
                         color: AppColors.mint, bold: true),
                     const Divider(height: 24, color: AppColors.border),
-                    _row('Total charged today',
-                        '\$${widget.price.toStringAsFixed(2)}',
+                    _row(
+                        'Total charged today', CurrencyUtils.formatNPR(_amount),
                         bold: true),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Bank-Grade Escrow Protection',
+            Text(
+                _monthlyPlan
+                    ? 'Monthly mentorship includes'
+                    : 'Bank-Grade Escrow Protection',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const _PaymentSecurityCard(),
+            _monthlyPlan
+                ? const _MonthlyPlanDetails()
+                : const _PaymentSecurityCard(),
             if (_error != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -120,15 +188,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ],
             const SizedBox(height: 24),
+            if (_error != null)
+              TextButton(
+                  onPressed: _loadFee,
+                  child: const Text('Recheck platform fee')),
             ElevatedButton(
-              onPressed: _processing ? null : _confirmPayment,
+              onPressed: _processing || _calculatedFee == null
+                  ? null
+                  : _confirmPayment,
               child: _processing
                   ? const SizedBox(
                       height: 18,
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(
-                      'Confirm Escrow Payment · \$${widget.price.toStringAsFixed(2)}'),
+                  : Text(_monthlyPlan
+                      ? 'Start Monthly Plan · ${CurrencyUtils.formatNPR(_amount)}'
+                      : 'Confirm Escrow Payment · ${CurrencyUtils.formatNPR(_amount)}'),
             ),
             const SizedBox(height: 10),
             const Center(
@@ -160,8 +235,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
+class _MonthlyPlanDetails extends StatelessWidget {
+  const _MonthlyPlanDetails();
+
+  @override
+  Widget build(BuildContext context) => const _PaymentSecurityCard(
+        message:
+            '30 days of dedicated mentorship, weekly live calls, async messaging, and a shared workspace.',
+      );
+}
+
 class _PaymentSecurityCard extends StatelessWidget {
-  const _PaymentSecurityCard();
+  final String message;
+  const _PaymentSecurityCard({
+    this.message =
+        'Your payment is held securely until the session is complete.',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -170,16 +259,18 @@ class _PaymentSecurityCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
+          children: [
             Row(
               children: [
-                Icon(Icons.lock_outline, color: AppColors.mint),
-                SizedBox(width: 10),
+                const Icon(Icons.lock_outline, color: AppColors.mint),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Your payment is held securely until the session is complete.',
-                    style:
-                        TextStyle(color: AppColors.textSecondary, height: 1.4),
+                    message,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -210,15 +301,21 @@ class _ReceiptDialog extends StatelessWidget {
         children: [
           _line('Transaction ID', '${receipt['transactionId'] ?? '-'}'),
           _line('Gross amount',
-              '\$${(receipt['grossAmount'] ?? 0).toStringAsFixed(2)}'),
-          _line('Platform fee',
-              '\$${(receipt['platformProtectionFee'] ?? 4.0).toStringAsFixed(2)}'),
-          _line('Mentor payout (escrow)',
-              '\$${(receipt['mentorNetPayout'] ?? 16.0).toStringAsFixed(2)}'),
+              CurrencyUtils.formatNPR((receipt['grossAmount'] ?? 0) as num)),
+          _line(
+              'Platform fee',
+              CurrencyUtils.formatNPR(
+                  (receipt['platformProtectionFee'] ?? 0) as num)),
+          _line(
+              'Mentor payout (escrow)',
+              CurrencyUtils.formatNPR(
+                  (receipt['mentorNetPayout'] ?? 0) as num)),
           _line('Escrow status',
               '${receipt['escrowStatus'] ?? 'held_in_escrow'}'),
-          _line('Remaining wallet',
-              '\$${(receipt['remainingWallet'] ?? 0).toStringAsFixed(2)}'),
+          _line(
+              'Remaining wallet',
+              CurrencyUtils.formatNPR(
+                  (receipt['remainingWallet'] ?? 0) as num)),
         ],
       ),
       actions: [

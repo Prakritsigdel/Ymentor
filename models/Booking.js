@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 
 const FinancialsSchema = new mongoose.Schema(
   {
-    grossAmount: { type: Number, required: true },
-    platformCommission20Percent: { type: Number, required: true },
-    mentorNetPayout80Percent: { type: Number, required: true },
+    currency: { type: String, enum: ['NPR'], default: 'NPR' },
+    grossAmount: { type: Number, required: true, min: 0, validate: Number.isInteger },
+    platformCommission20Percent: { type: Number, required: true, min: 0, validate: Number.isInteger },
+    mentorNetPayout80Percent: { type: Number, required: true, min: 0, validate: Number.isInteger },
     escrowStatus: {
       type: String,
       enum: ['held_in_escrow', 'release_requested', 'released', 'refunded', 'HELD', 'RELEASED', 'REFUNDED'],
@@ -18,10 +19,15 @@ const BookingSchema = new mongoose.Schema(
   {
     menteeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     mentorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    durationMinutes: { type: Number, enum: [30, 60, 120], required: true },
+    durationMinutes: { type: Number, enum: [0, 30, 60, 120, 180], required: true },
+    planType: { type: String, enum: ['hourly', 'monthly'], default: 'hourly' },
+    planStartsAt: { type: Date },
+    planEndsAt: { type: Date },
+    conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatConversation' },
     scheduledTime: { type: Date, required: true },
     meetingUrl: { type: String, default: 'https://meet.google.com/abc-defg-hij' },
-    platformFee: { type: Number, default: 4.0 },
+    currency: { type: String, enum: ['NPR'], default: 'NPR' },
+    platformFee: { type: Number, default: 0, min: 0, validate: Number.isInteger },
     escrowStatus: {
       type: String,
       enum: ['held_in_escrow', 'release_requested', 'released', 'refunded', 'HELD', 'RELEASED', 'REFUNDED'],

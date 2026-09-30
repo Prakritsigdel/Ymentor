@@ -11,7 +11,7 @@ import '../../config/theme.dart';
 /// Usage:
 ///   AppStatCard(
 ///     label: 'Wallet Balance',
-///     value: '\$320.00',
+///     value: 'NPR 320',
 ///     color: AppColors.mint,
 ///     icon: IconsaxPlusBold.wallet,
 ///   )

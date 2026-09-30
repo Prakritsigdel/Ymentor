@@ -274,6 +274,60 @@ class ApiService {
     });
   }
 
+  static Future<AppUser> completeMenteeOnboarding({
+    required String academicStatus,
+    required String fieldOfInterest,
+    required String primaryGoal,
+    required List<String> targetSkills,
+    required String competencyLevel,
+    required String preferredMode,
+    required String mentorStyle,
+    required double targetBudget,
+    required double weeklyCommitmentHours,
+  }) async {
+    return _guard(() async {
+      final response = await _put(
+        _base.replace(path: '/api/users/onboarding/mentee'),
+        headers: _headers(),
+        body: jsonEncode({
+          'academicStatus': academicStatus,
+          'fieldOfInterest': fieldOfInterest,
+          'primaryGoal': primaryGoal,
+          'targetSkills': targetSkills,
+          'competencyLevel': competencyLevel,
+          'preferredMode': preferredMode,
+          'mentorStyle': mentorStyle,
+          'targetBudget': targetBudget,
+          'weeklyCommitmentHours': weeklyCommitmentHours,
+        }),
+      );
+      final data = _decode(response);
+      return AppUser.fromJson(data['user'] as Map<String, dynamic>);
+    });
+  }
+
+  static Future<AppUser> submitMentorOnboarding({
+    required Map<String, String> fields,
+    Map<String, File> files = const {},
+  }) async {
+    return _guard(() async {
+      final request = http.MultipartRequest(
+        'POST',
+        _base.replace(path: '/api/auth/onboard/mentor'),
+      );
+      if (authToken != null && authToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer ${authToken!}';
+      }
+      request.fields.addAll(fields);
+      for (final entry in files.entries) {
+        request.files.add(
+            await http.MultipartFile.fromPath(entry.key, entry.value.path));
+      }
+      final data = _decode(await _sendMultipart(request));
+      return AppUser.fromJson(data['user'] as Map<String, dynamic>);
+    });
+  }
+
   static Future<AppUser> updateProfile({
     String? name,
     String? bio,
@@ -281,6 +335,8 @@ class ApiService {
     String? faculty,
     List<String>? skillsOrInterests,
     double? hourlyRate,
+    double? monthlyRate,
+    int? maxMentees,
     PricingTiers? pricingTiers,
     String? meetingUrl,
   }) async {
@@ -295,6 +351,8 @@ class ApiService {
           if (faculty != null) 'faculty': faculty,
           if (skillsOrInterests != null) 'skillsOrInterests': skillsOrInterests,
           if (hourlyRate != null) 'hourlyRate': hourlyRate,
+          if (monthlyRate != null) 'monthlyRate': monthlyRate,
+          if (maxMentees != null) 'maxMentees': maxMentees,
           if (pricingTiers != null) 'pricingTiers': pricingTiers.toJson(),
           if (meetingUrl != null) 'meetingUrl': meetingUrl,
         }),
@@ -390,6 +448,88 @@ class ApiService {
       );
       return _decode(res);
     });
+  }
+
+  static Future<Map<String, dynamic>> checkoutMonthly(String mentorId) async {
+    return _guard(() async {
+      final response = await _post(
+        _base.replace(path: '/api/bookings/monthly'),
+        headers: _headers(),
+        body: jsonEncode({'mentorId': mentorId}),
+      );
+      return _decode(response);
+    });
+  }
+
+  static Future<Map<String, dynamic>> getPlatformFee(double amount) async {
+    return _guard(() async {
+      final response = await _get(
+        _base.replace(
+          path: '/api/platform/fees',
+          queryParameters: {'amount': amount.toStringAsFixed(2)},
+        ),
+      );
+      return _decode(response);
+    });
+  }
+
+  static Future<List<dynamic>> getChatMessages(String conversationId,
+      {DateTime? after}) async {
+    return _guard(() async {
+      final response = await _get(
+        _base.replace(
+          path: '/api/chat/$conversationId',
+          queryParameters:
+              after == null ? null : {'after': after.toUtc().toIso8601String()},
+        ),
+        headers: _headers(),
+      );
+      return _decodeList(response);
+    });
+  }
+
+  static Future<Map<String, dynamic>> sendChatMessage({
+    required String conversationId,
+    String text = '',
+    File? pdf,
+    String sessionType = 'MONTHLY',
+  }) async {
+    return _guard(() async {
+      final request =
+          http.MultipartRequest('POST', _base.replace(path: '/api/chat/send'));
+      if (authToken != null && authToken!.isNotEmpty)
+        request.headers['Authorization'] = 'Bearer ${authToken!}';
+      request.fields['conversationId'] = conversationId;
+      request.fields['text'] = text;
+      request.fields['sessionType'] = sessionType;
+      if (pdf != null)
+        request.files.add(await http.MultipartFile.fromPath('pdf', pdf.path));
+      return _decode(await _sendMultipart(request));
+    });
+  }
+
+  static Future<dynamic> adminGet(String path) async {
+    return _guard(() async => _decode(await _get(
+        _base.replace(path: '/api/admin/$path'),
+        headers: _headers())));
+  }
+
+  static Future<dynamic> adminPut(
+      String path, Map<String, dynamic> body) async {
+    return _guard(() async => _decode(await _put(
+          _base.replace(path: '/api/admin/$path'),
+          headers: _headers(),
+          body: jsonEncode(body),
+        )));
+  }
+
+  static Future<dynamic> adminPost(
+      String path, Map<String, dynamic> body) async {
+    return _guard(() async => _decode(await _post(
+          _base.replace(path: '/api/admin/$path'),
+          headers: _headers(),
+          body: jsonEncode(body),
+        )));
   }
 
   static Future<Map<String, dynamic>> completeBooking(
