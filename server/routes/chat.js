@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const mongoose = require('mongoose');
 const Booking = require('../../models/Booking');
+const Workspace = require('../../models/Workspace');
 const ChatConversation = require('../../models/ChatConversation');
 const ChatMessage = require('../../models/ChatMessage');
 
@@ -60,15 +61,17 @@ function createChatRouter({ verifyAuth, uploadsDir }) {
     try {
       const {
         conversationId,
+        workspaceId,
         text = '',
         sessionType,
         messageType = 'USER',
         preset,
       } = req.body;
-      if (!conversationId || (!String(text).trim() && !req.file)) {
+      const requestedConversationId = conversationId || workspaceId;
+      if (!requestedConversationId || (!String(text).trim() && !req.file)) {
         return res.status(400).json({ error: 'A message or PDF attachment is required.' });
       }
-      const conversation = await findConversation(conversationId);
+      const conversation = await findConversation(requestedConversationId);
       if (!conversation || !isParticipant(conversation, req.user)) {
         return res.status(404).json({ error: 'Conversation not found.' });
       }
@@ -124,8 +127,38 @@ function createChatRouter({ verifyAuth, uploadsDir }) {
   });
 
   async function findConversation(id) {
-    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(id)) return ChatConversation.findById(id);
-    return (global.ymentorMemoryStore?.conversations || []).find((item) => String(item._id) === id) || null;
+    if (mongoose.connection.readyState === 1) {
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        const direct = await ChatConversation.findById(id);
+        if (direct) return direct;
+        const workspace = await Workspace.findById(id).lean();
+        if (workspace) {
+          const booking = await Booking.findOne({
+            mentorId: workspace.mentorId,
+            menteeId: workspace.menteeId,
+            planType: workspace.planType,
+          }).sort({ createdAt: -1 });
+          if (booking?.conversationId) return ChatConversation.findById(booking.conversationId);
+        }
+      }
+      return null;
+    }
+    const direct = (global.ymentorMemoryStore?.conversations || [])
+        .find((item) => String(item._id) === id);
+    if (direct) return direct;
+    const workspace = (global.ymentorMemoryStore?.workspaces || [])
+        .find((item) => String(item._id) === id);
+    if (!workspace) return null;
+    const booking = (global.ymentorMemoryStore?.bookings || [])
+        .filter((item) =>
+          String(item.mentorId) === String(workspace.mentorId) &&
+          String(item.menteeId) === String(workspace.menteeId) &&
+          item.planType === workspace.planType)
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+    return booking
+        ? (global.ymentorMemoryStore?.conversations || [])
+            .find((item) => String(item._id) === String(booking.conversationId))
+        : null;
   }
 
   async function findBooking(id) {

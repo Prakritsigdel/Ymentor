@@ -11,6 +11,50 @@ const SearchEvent = require('../../models/SearchEvent');
 function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
   const router = express.Router();
 
+  router.get('/summary', verifyAuth, verifyRole(['admin']), async (_req, res) => {
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        const users = global.ymentorMemoryStore?.users || [];
+        const bookings = global.ymentorMemoryStore?.bookings || [];
+        const disputes = global.ymentorMemoryStore?.disputes || [];
+        return res.json({
+          pendingKyc: users.filter((user) => user.role === 'mentor' && user.status === 'pending_approval').length,
+          activeEscrow: bookings
+            .filter((booking) => booking.escrowStatus === 'held_in_escrow')
+            .reduce((sum, booking) => sum + Number(booking.financials?.grossAmount || 0), 0),
+          openDisputes: disputes.filter((dispute) => dispute.status === 'open').length,
+          commissionRevenue: bookings
+            .filter((booking) => ['released', 'completed'].includes(booking.escrowStatus))
+            .reduce((sum, booking) => sum + Number(booking.platformFee || booking.financials?.platformProtectionFee || 0), 0),
+        });
+      }
+      const [pendingKyc, escrow, openDisputes, commission] = await Promise.all([
+        User.countDocuments({
+          role: 'mentor',
+          $or: [{ status: 'pending_approval' }, { verificationStatus: 'PENDING_APPROVAL' }],
+        }),
+        Booking.aggregate([
+          { $match: { escrowStatus: 'held_in_escrow' } },
+          { $group: { _id: null, total: { $sum: '$financials.grossAmount' } } },
+        ]),
+        Dispute.countDocuments({ status: 'open' }),
+        Booking.aggregate([
+          { $match: { escrowStatus: { $in: ['released', 'completed'] } } },
+          { $group: { _id: null, total: { $sum: '$platformFee' } } },
+        ]),
+      ]);
+      return res.json({
+        pendingKyc,
+        activeEscrow: escrow[0]?.total || 0,
+        openDisputes,
+        commissionRevenue: commission[0]?.total || 0,
+      });
+    } catch (error) {
+      console.error('Admin summary error:', error);
+      return res.status(500).json({ error: 'Unable to load admin summary.' });
+    }
+  });
+
   router.get('/kyc', verifyAuth, verifyRole(['admin']), async (_req, res) => {
     try {
       if (mongoose.connection.readyState !== 1) {
@@ -109,8 +153,8 @@ function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
         const mentor = await User.findById(booking.mentorId);
         const gross = Number(booking.financials.grossAmount);
         const net = Number(booking.financials.mentorNetPayout80Percent);
+        const refund = req.body.resolution === 'split' ? Math.floor(gross / 2) : gross;
         if (req.body.resolution === 'refund_mentee' || req.body.resolution === 'split') {
-          const refund = req.body.resolution === 'split' ? Math.floor(gross / 2) : gross;
           mentee.walletBalance += refund;
           if (mentee.wallet) mentee.wallet.balance = mentee.walletBalance;
           await mentee.save();
@@ -139,8 +183,8 @@ function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
         const mentor = (global.ymentorMemoryStore.users || []).find((item) => String(item._id || item.id) === String(booking.mentorId));
         const gross = Number(booking.financials?.grossAmount) || 0;
         const net = Number(booking.financials?.mentorNetPayout80Percent) || 0;
+        const refund = req.body.resolution === 'split' ? Math.floor(gross / 2) : gross;
         if (mentee && ['refund_mentee', 'split'].includes(req.body.resolution)) {
-          const refund = req.body.resolution === 'split' ? Math.floor(gross / 2) : gross;
           mentee.walletBalance = (mentee.walletBalance || 0) + refund;
           if (mentee.wallet) mentee.wallet.balance = mentee.walletBalance;
         }
