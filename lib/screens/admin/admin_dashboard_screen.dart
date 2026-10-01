@@ -4,6 +4,8 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/admin_modules.dart';
+import '../../services/api_service.dart';
+import '../../utils/currency_formatter.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -62,18 +64,92 @@ class AdminDashboardScreen extends StatelessWidget {
               ],
             ),
           ),
-          body: const TabBarView(
+          body: Column(
             children: [
-              AdminKycModule(),
-              AdminLedgerModule(),
-              AdminDisputesModule(),
-              AdminUsersModule(),
-              AdminReviewsModule(),
-              AdminAnalyticsModule(),
-              AdminSystemModule(),
+              FutureBuilder<dynamic>(
+                future: ApiService.adminGet('summary'),
+                builder: (context, snapshot) {
+                  final data = snapshot.data is Map
+                      ? Map<String, dynamic>.from(snapshot.data as Map)
+                      : const <String, dynamic>{};
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _metric(context, 'Pending KYC', data['pendingKyc'] ?? 0,
+                            Icons.verified_user_outlined),
+                        _metric(
+                            context,
+                            'Escrow locked',
+                            CurrencyUtils.formatNPR(
+                                (data['activeEscrow'] as num?) ?? 0),
+                            Icons.lock_clock_outlined),
+                        _metric(context, 'Open disputes',
+                            data['openDisputes'] ?? 0, Icons.gavel_outlined),
+                        _metric(
+                            context,
+                            'Commission',
+                            CurrencyUtils.formatNPR(
+                                (data['commissionRevenue'] as num?) ?? 0),
+                            Icons.account_balance_outlined),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const Expanded(
+                child: TabBarView(
+                  children: [
+                    AdminKycModule(),
+                    AdminLedgerModule(),
+                    AdminDisputesModule(),
+                    AdminUsersModule(),
+                    AdminReviewsModule(),
+                    AdminAnalyticsModule(),
+                    AdminSystemModule(),
+                  ],
+                ),
+              ),
             ],
           ),
           backgroundColor: AppColors.background,
         ),
       );
+
+  Widget _metric(
+    BuildContext context,
+    String label,
+    Object value,
+    IconData icon,
+  ) {
+    return SizedBox(
+      width: 165,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis),
+                    Text('$value',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
-import '../../models/user_model.dart';
 import '../../models/workspace_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
@@ -27,9 +26,8 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
   File? _pickedPdf;
   bool _uploading = false;
 
-  final _tier30Ctrl = TextEditingController();
-  final _tier60Ctrl = TextEditingController();
-  final _tier120Ctrl = TextEditingController();
+  final _hourlyRateCtrl = TextEditingController();
+  final _monthlyRateCtrl = TextEditingController();
   final _meetingUrlCtrl = TextEditingController();
   bool _savingConfig = false;
 
@@ -47,9 +45,8 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
     _titleCtrl.dispose();
     _descriptionCtrl.dispose();
     _dueDateCtrl.dispose();
-    _tier30Ctrl.dispose();
-    _tier60Ctrl.dispose();
-    _tier120Ctrl.dispose();
+    _hourlyRateCtrl.dispose();
+    _monthlyRateCtrl.dispose();
     _meetingUrlCtrl.dispose();
     super.dispose();
   }
@@ -57,9 +54,10 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
   void _hydrateConfigFields() {
     final user = context.read<AuthProvider>().user;
     if (user == null) return;
-    _tier30Ctrl.text = user.pricingTiers.tier30m.toStringAsFixed(2);
-    _tier60Ctrl.text = user.pricingTiers.tier60m.toStringAsFixed(2);
-    _tier120Ctrl.text = user.pricingTiers.tier120m.toStringAsFixed(2);
+    _hourlyRateCtrl.text = user.hourlyRate.toStringAsFixed(0);
+    _monthlyRateCtrl.text =
+        ((user.mentorProfile['monthlyRate'] as num?)?.toDouble() ?? 0)
+            .toStringAsFixed(0);
     _meetingUrlCtrl.text = user.meetingUrl;
   }
 
@@ -150,23 +148,17 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
 
     setState(() => _savingConfig = true);
     try {
-      await ApiService.updateMentorConfig(
-        user.id,
-        pricingTiers: PricingTiers(
-          tier30m:
-              double.tryParse(_tier30Ctrl.text) ?? user.pricingTiers.tier30m,
-          tier60m:
-              double.tryParse(_tier60Ctrl.text) ?? user.pricingTiers.tier60m,
-          tier120m:
-              double.tryParse(_tier120Ctrl.text) ?? user.pricingTiers.tier120m,
-        ),
+      await ApiService.updateMentorProfile(
+        hourlyRateNpr: double.tryParse(_hourlyRateCtrl.text) ?? user.hourlyRate,
+        monthlyRateNpr: double.tryParse(_monthlyRateCtrl.text) ??
+            ((user.mentorProfile['monthlyRate'] as num?)?.toDouble() ?? 0),
         meetingUrl: _meetingUrlCtrl.text.trim(),
       );
 
       await context.read<AuthProvider>().refreshUser();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pricing tiers and meeting URL updated!')),
+        const SnackBar(content: Text('NPR pricing and meeting URL updated!')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -424,8 +416,8 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
 
                 const SizedBox(height: 24),
 
-                // Tier Pricing Editor & Meeting URL
-                const Text('Session Tier Pricing & Meeting Link',
+                // Base Pricing Editor & Meeting URL
+                const Text('NPR Pricing & Meeting Link',
                     style:
                         TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
@@ -439,27 +431,19 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: _tier30Ctrl,
+                                controller: _hourlyRateCtrl,
                                 decoration: const InputDecoration(
-                                    labelText: '30m (NPR)', prefixText: 'NPR '),
+                                    labelText: 'Base hourly rate',
+                                    prefixText: 'NPR '),
                                 keyboardType: TextInputType.number,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: TextField(
-                                controller: _tier60Ctrl,
+                                controller: _monthlyRateCtrl,
                                 decoration: const InputDecoration(
-                                    labelText: '60m (NPR)', prefixText: 'NPR '),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: _tier120Ctrl,
-                                decoration: const InputDecoration(
-                                    labelText: '120m (NPR)',
+                                    labelText: 'Monthly retainer',
                                     prefixText: 'NPR '),
                                 keyboardType: TextInputType.number,
                               ),

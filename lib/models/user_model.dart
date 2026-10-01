@@ -40,14 +40,23 @@ class PricingTiers {
   final double tier120m;
 
   PricingTiers(
-      {this.tier30m = 1200.0, this.tier60m = 2000.0, this.tier120m = 3800.0});
+      {this.tier30m = 0, this.tier60m = 0, this.tier120m = 0});
 
-  factory PricingTiers.fromJson(Map<String, dynamic>? json) {
-    if (json == null) return PricingTiers();
+  factory PricingTiers.fromJson(
+    Map<String, dynamic>? json, {
+    double hourlyRate = 0,
+  }) {
+    if (json == null || json.isEmpty) {
+      return PricingTiers(
+        tier30m: hourlyRate * 0.5,
+        tier60m: hourlyRate,
+        tier120m: hourlyRate * 1.8,
+      );
+    }
     return PricingTiers(
-      tier30m: (json['tier30m'] as num?)?.toDouble() ?? 1200.0,
-      tier60m: (json['tier60m'] as num?)?.toDouble() ?? 2000.0,
-      tier120m: (json['tier120m'] as num?)?.toDouble() ?? 3800.0,
+      tier30m: (json['tier30m'] as num?)?.toDouble() ?? hourlyRate * 0.5,
+      tier60m: (json['tier60m'] as num?)?.toDouble() ?? hourlyRate,
+      tier120m: (json['tier120m'] as num?)?.toDouble() ?? hourlyRate * 1.8,
     );
   }
 
@@ -191,7 +200,10 @@ class AppUser {
       qualifications: Qualifications.fromJson(
           json['qualifications'] as Map<String, dynamic>?),
       pricingTiers:
-          PricingTiers.fromJson(json['pricingTiers'] as Map<String, dynamic>?),
+          PricingTiers.fromJson(
+            json['pricingTiers'] as Map<String, dynamic>?,
+            hourlyRate: resolvedHourly,
+          ),
       meetingUrl: json['meetingUrl']?.toString() ?? '',
       ratingAvg: (json['ratingAvg'] as num?)?.toDouble() ?? 5.0,
       totalSessions: (json['totalSessions'] as num?)?.toInt() ?? 0,

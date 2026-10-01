@@ -316,7 +316,7 @@ class ApiService {
         _base.replace(path: '/api/auth/onboard/mentor'),
       );
       if (authToken != null && authToken!.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer ${authToken!}';
+        request.headers['Authorization'] = 'Bearer $authToken';
       }
       request.fields.addAll(fields);
       for (final entry in files.entries) {
@@ -358,6 +358,28 @@ class ApiService {
         }),
       );
       final data = _decode(res);
+      final userMap =
+          data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
+      return AppUser.fromJson(userMap);
+    });
+  }
+
+  static Future<AppUser> updateMentorProfile({
+    required double hourlyRateNpr,
+    required double monthlyRateNpr,
+    required String meetingUrl,
+  }) async {
+    return _guard(() async {
+      final response = await _patch(
+        _base.replace(path: '/api/v1/mentors/profile'),
+        headers: _headers(),
+        body: jsonEncode({
+          'hourlyRateNPR': hourlyRateNpr,
+          'monthlyRateNPR': monthlyRateNpr,
+          'meetingUrl': meetingUrl,
+        }),
+      );
+      final data = _decode(response);
       final userMap =
           data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
       return AppUser.fromJson(userMap);
@@ -478,7 +500,7 @@ class ApiService {
     return _guard(() async {
       final response = await _get(
         _base.replace(
-          path: '/api/chat/$conversationId',
+          path: '/api/v1/chat/$conversationId',
           queryParameters:
               after == null ? null : {'after': after.toUtc().toIso8601String()},
         ),
@@ -496,9 +518,9 @@ class ApiService {
   }) async {
     return _guard(() async {
       final request =
-          http.MultipartRequest('POST', _base.replace(path: '/api/chat/send'));
+          http.MultipartRequest('POST', _base.replace(path: '/api/v1/chat/send'));
       if (authToken != null && authToken!.isNotEmpty)
-        request.headers['Authorization'] = 'Bearer ${authToken!}';
+        request.headers['Authorization'] = 'Bearer $authToken';
       request.fields['conversationId'] = conversationId;
       request.fields['text'] = text;
       request.fields['sessionType'] = sessionType;

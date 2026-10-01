@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../config/app_routes.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_controller.dart';
 import '../../utils/currency_formatter.dart';
 import '../../widgets/common/app_logo_avatar.dart';
-import 'change_password_screen.dart';
-import 'update_profile_screen.dart';
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -15,7 +16,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.user;
-    if (user == null) return const Center(child: Text('Not logged in.'));
+    if (user == null) return const LoginScreen();
     final theme = context.watch<ThemeController>();
     final role = user.isMentor ? 'Mentor' : user.isAdmin ? 'Admin' : 'Mentee';
     return Scaffold(
@@ -30,7 +31,9 @@ class ProfileScreen extends StatelessWidget {
                 AppLogoAvatar(size: 84, imageUrl: user.avatarUrl, fallbackText: _initials(user.name)),
                 Positioned(right: 0, bottom: 0, child: CircleAvatar(
                   radius: 15, backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: const Icon(Icons.camera_alt, size: 15, color: Colors.white),
+                  child: Icon(Icons.camera_alt,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.onPrimary),
                 )),
               ]),
               const SizedBox(height: 10),
@@ -60,16 +63,16 @@ class ProfileScreen extends StatelessWidget {
           _academicCard(context, user),
           _menu(context, 'SHORTCUTS', [
             _item(context, Icons.person_outline, 'Update Profile',
-                () => _push(context, const UpdateProfileScreen())),
+                () => Navigator.pushNamed(context, AppRoutes.updateProfile)),
             _item(context, Icons.lock_outline, 'Change Password',
-                () => _push(context, const ChangePasswordScreen())),
+                () => Navigator.pushNamed(context, AppRoutes.changePassword)),
             _item(context, Icons.badge_outlined, 'Request ID Card', () {}),
             _item(context, Icons.notifications_none, 'Your Notification', () {}),
           ]),
           _menu(context, 'SUPPORT', [
             _item(context, Icons.verified_outlined, 'Certificate Verification', () {}),
             _item(context, Icons.receipt_long_outlined, 'Purchase History', () {}),
-            _item(context, Icons.chat_outlined, 'WhatsApp', () {}),
+            _item(context, Icons.chat_outlined, 'WhatsApp', () => _openWhatsApp(context)),
           ]),
           _menu(context, 'OTHERS', [
             _item(context, Icons.shield_outlined, 'Parent & Safety Settings', () {}),
@@ -125,9 +128,23 @@ class ProfileScreen extends StatelessWidget {
       actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Log out'))],
     ));
-    if (confirmed == true) await auth.logout();
+    if (confirmed != true) return;
+    await auth.logout();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil<void>(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
-  void _push(BuildContext context, Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  Future<void> _openWhatsApp(BuildContext context) async {
+    final uri = Uri.parse('https://wa.me/?text=Hello%20YMentor%20Support');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open WhatsApp.')),
+      );
+    }
+  }
   String _initials(String name) => name.trim().split(' ').where((s) => s.isNotEmpty).take(2).map((s) => s[0]).join().toUpperCase();
 }

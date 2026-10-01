@@ -35,7 +35,7 @@ class BrandFooter extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
       ),
@@ -49,7 +49,7 @@ class BrandFooter extends StatelessWidget {
               Text(
                 'Ymentor',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.cream,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                 ),
@@ -57,9 +57,11 @@ class BrandFooter extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Your trusted source to find highly vetted mentors...',
-            style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.5),
           ),
           const SizedBox(height: 16),
           ..._faqs.map(
@@ -72,15 +74,16 @@ class BrandFooter extends StatelessWidget {
                 iconColor: AppColors.mint,
                 collapsedIconColor: AppColors.textSecondary,
                 title: Text(faq.$1,
-                    style: const TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontSize: 13, fontWeight: FontWeight.w600)),
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       faq.$2,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, height: 1.45),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.45),
                     ),
                   ),
                 ],

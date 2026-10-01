@@ -35,25 +35,25 @@ class PrimaryButton extends StatelessWidget {
           ],
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 height: 22,
                 width: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, color: Colors.white, size: 20),
+                    Icon(icon, color: Theme.of(context).colorScheme.onPrimary, size: 20),
                     const SizedBox(width: 8),
                   ],
                   Text(
                     text,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),

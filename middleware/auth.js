@@ -55,6 +55,7 @@ async function verifyAuth(req, res, next) {
       return res.status(403).json({ error: 'Your account has been suspended. Please contact administrator.' });
     }
 
+    if (user.role) user.role = String(user.role).toLowerCase();
     req.user = user;
     next();
   } catch (error) {
@@ -69,7 +70,7 @@ function verifyRole(allowedRoles = []) {
       return res.status(401).json({ error: 'User is not authenticated.' });
     }
 
-    const userRole = req.user.role;
+    const userRole = String(req.user.role || '').toLowerCase();
     if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({
         error: `Access denied. Requires one of roles: [${allowedRoles.join(', ')}], but current role is '${userRole}'.`,

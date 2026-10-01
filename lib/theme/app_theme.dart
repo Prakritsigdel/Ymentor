@@ -118,6 +118,10 @@ class AppTheme {
         onSecondary: Colors.white,
         surface: surface,
         onSurface: text,
+        surfaceContainerHighest: brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : const Color(0xFFF1F3F4),
+        onSurfaceVariant: muted,
         error: AppColors.terracotta,
         onError: Colors.white,
       ),
@@ -210,7 +214,7 @@ class AppTheme {
 
   static ThemeData get darkTheme => _build(
         brightness: Brightness.dark,
-        background: const Color(0xFF0D0D0D),
+        background: const Color(0xFF121212),
         surface: const Color(0xFF1E1E1E),
         text: Colors.white,
         muted: const Color(0xFFBDBDBD),

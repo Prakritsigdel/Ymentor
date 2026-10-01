@@ -13,37 +13,44 @@ class HourlySessionUpdates extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        color: AppColors.surface,
+        color: Theme.of(context).cardColor,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.notifications_none, color: AppColors.star),
-                  SizedBox(width: 8),
+                  const Icon(Icons.notifications_none, color: AppColors.star),
+                  const SizedBox(width: 8),
                   Text('Session updates',
                       style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              )),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 'Session booked for ${TimeOfDay.fromDateTime(scheduledTime).format(context)}',
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               Text(
                 'Google Meet link generated · $durationMinutes minutes',
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
-              const Text(
+              Text(
                 'Please upload workspace code before the call.',
-                style: TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
-              const Text(
+              Text(
                 '15 minutes remaining reminder will appear during the session.',
-                style: TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),

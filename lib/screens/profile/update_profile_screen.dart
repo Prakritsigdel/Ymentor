@@ -11,7 +11,8 @@ class UpdateProfileScreen extends StatefulWidget {
 
 class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _address = TextEditingController();
@@ -32,7 +33,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     super.initState();
     final user = context.read<AuthProvider>().user;
     if (user != null) {
-      _name.text = user.name;
+      final nameParts = user.name.trim().split(RegExp(r'\s+'));
+      _firstName.text = nameParts.isEmpty ? '' : nameParts.first;
+      _lastName.text = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
       _email.text = user.email;
       _faculty.text = user.faculty;
       _title.text = user.title;
@@ -43,7 +46,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _email, _phone, _address, _city, _state, _country,
+    for (final c in [_firstName, _lastName, _email, _phone, _address, _city, _state, _country,
       _zip, _faculty, _title, _bio, _skill]) {
       c.dispose();
     }
@@ -55,7 +58,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     setState(() => _saving = true);
     try {
       await context.read<AuthProvider>().updateProfile(
-            name: _name.text.trim(),
+            name: '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim(),
             bio: _bio.text.trim(),
             title: _title.text.trim(),
             faculty: _faculty.text.trim(),
@@ -89,7 +92,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               _section('Personal information', [
-                _field(_name, 'Full name', required: true),
+                Row(children: [
+                  Expanded(child: _field(_firstName, 'First name', required: true)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _field(_lastName, 'Last name')),
+                ]),
                 _field(_email, 'Email', keyboard: TextInputType.emailAddress),
                 _field(_phone, 'Phone number', keyboard: TextInputType.phone),
               ]),

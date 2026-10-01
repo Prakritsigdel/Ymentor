@@ -8,17 +8,43 @@ import 'workspace/workspace_screen.dart';
 import 'dashboard/mentor_dashboard_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/login_screen.dart';
+import 'profile/profile_screen.dart';
 import '../widgets/auth_required_sheet.dart';
 
 class RootShell extends StatefulWidget {
-  const RootShell({super.key});
+  final int initialIndex;
+
+  const RootShell({super.key, this.initialIndex = 0});
 
   @override
   State<RootShell> createState() => _RootShellState();
 }
 
 class _RootShellState extends State<RootShell> {
-  int _index = 0;
+  late int _index;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openProfile() {
+    setState(() => _index = 3);
+    _pageController.animateToPage(
+      3,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +53,10 @@ class _RootShellState extends State<RootShell> {
     final isAdmin = auth.isAdmin;
 
     final tabs = <Widget>[
-      const DiscoveryScreen(),
+      DiscoveryScreen(onProfileTap: _openProfile),
       _guarded(auth, const ActiveCallScreen(), title: 'Mentorship Sessions'),
       _guarded(auth, const WorkspaceScreen(), title: 'Classroom Workspace'),
+      const ProfileScreen(),
       if (isMentor)
         _guarded(auth, const MentorDashboardScreen(),
             title: 'Mentor Dashboard'),
@@ -54,6 +81,11 @@ class _RootShellState extends State<RootShell> {
         activeIcon: Icon(Icons.folder),
         label: 'Workspace',
       ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.person_outline),
+        activeIcon: Icon(Icons.person),
+        label: 'Profile',
+      ),
       if (isMentor)
         const BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_outlined),
@@ -69,14 +101,23 @@ class _RootShellState extends State<RootShell> {
     ];
 
     final safeIndex = _index >= tabs.length ? 0 : _index;
+    if (_index != safeIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _index = safeIndex);
+      });
+    }
 
     return Scaffold(
-      body: IndexedStack(index: safeIndex, children: tabs),
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: tabs,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: safeIndex,
         items: navItems,
         onTap: (i) {
-          if (!auth.isLoggedIn && i != 0) {
+          if (!auth.isLoggedIn && i != 0 && i != 3) {
             showAuthRequiredSheet(
               context,
               action: i == 2
@@ -86,6 +127,11 @@ class _RootShellState extends State<RootShell> {
             return;
           }
           setState(() => _index = i);
+          _pageController.animateToPage(
+            i,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         },
       ),
     );

@@ -196,7 +196,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
               child: Text(
                 'My Sessions',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
                 ),
@@ -465,7 +465,8 @@ class _LiveDotState extends State<_LiveDot>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: Tween<double>(begin: 0.4, end: 1).animate(_controller),
-      child: const Icon(Icons.circle, color: Colors.white, size: 8),
+      child: Icon(Icons.circle,
+          color: Theme.of(context).colorScheme.onPrimary, size: 8),
     );
   }
 }

@@ -21,7 +21,9 @@ const List<String> kSkillFilters = [
 ];
 
 class DiscoveryScreen extends StatefulWidget {
-  const DiscoveryScreen({super.key});
+  final VoidCallback? onProfileTap;
+
+  const DiscoveryScreen({super.key, this.onProfileTap});
 
   @override
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
@@ -139,9 +141,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
         actions: [
           if (auth.isLoggedIn && user != null) ...[
             TextButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              ),
+              onPressed: widget.onProfileTap ??
+                  () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ProfileScreen()),
+                      ),
               icon: AppLogoAvatar(
                 size: 30,
                 imageUrl: user.avatarUrl,

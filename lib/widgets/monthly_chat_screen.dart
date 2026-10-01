@@ -60,7 +60,7 @@ class _MonthlyChatScreenState extends State<MonthlyChatScreen> {
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          _scrollController.jumpTo(0);
         }
       });
     } catch (error) {
@@ -140,11 +140,12 @@ class _MonthlyChatScreenState extends State<MonthlyChatScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
+                    reverse: true,
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
-                      final message = _messages[index];
+                      final message = _messages[_messages.length - 1 - index];
                       final own = '${message['senderId']}' == userId;
                       final attachment =
                           message['attachmentUrl']?.toString() ?? '';
