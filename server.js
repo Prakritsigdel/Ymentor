@@ -10,6 +10,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -36,8 +37,28 @@ const { splitEscrow } = require('./services/escrowService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
-const WIFI_HOST = '192.168.0.4';
-//const WIFI_HOST = '10.10.9.15';
+const WIFI_HOST = process.env.WIFI_HOST || (() => {
+  const interfaces = os.networkInterfaces();
+  const candidates = Object.entries(interfaces)
+    .flatMap(([name, addresses]) =>
+      (addresses || [])
+        .filter((entry) => (entry.family === 'IPv4' || entry.family === 4) && !entry.internal)
+        .map((entry) => ({ name, address: entry.address })),
+    )
+    .sort((a, b) => {
+      const score = (candidate) => {
+        if (/wi[- ]?fi|wireless|wlan/i.test(candidate.name)) return 0;
+        if (/virtual|vEthernet|hyper-v|docker|default switch|loopback/i.test(candidate.name)) {
+          return 2;
+        }
+        return 1;
+      };
+      return score(a) - score(b);
+    });
+
+  if (candidates.length > 0) return candidates[0].address;
+  return '127.0.0.1';
+})();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ymentor';
 const ADMIN_EMAIL = process.env.YMENTOR_ADMIN_EMAIL?.trim().toLowerCase();
@@ -103,6 +124,7 @@ app.use('/api', createAuthRouter({ verifyAuth, uploadsDir }));
 app.use('/api/mentors', createMentorsRouter({ verifyAuth }));
 app.use('/api', createBookingsRouter({ verifyAuth }));
 app.use('/api/chat', createChatRouter({ verifyAuth, uploadsDir }));
+app.use('/api/v1/chat', createChatRouter({ verifyAuth, uploadsDir }));
 app.use('/api/admin', createAdminRouter({ verifyAuth, verifyRole, logAudit }));
 
 // Calculate Leaderboard score formula helper
@@ -139,7 +161,7 @@ async function autoSeedBaselineAccounts() {
         faculty: 'Software Engineering',
         skills: ['AI', 'Python', 'Flutter'],
       },
-      pricingTiers: { tier30m: 1200, tier60m: 2000, tier120m: 3800 },
+      pricingTiers: { tier30m: 1000, tier60m: 2000, tier120m: 3600 },
       meetingUrl: 'https://meet.google.com/ymentor-alex-mentor',
       ratingAvg: 4.95,
       totalSessions: 38,
@@ -169,7 +191,7 @@ async function autoSeedBaselineAccounts() {
         faculty: 'Computer Science',
         skills: ['AI', 'Python'],
       },
-      pricingTiers: { tier30m: 1200, tier60m: 2000, tier120m: 3800 },
+      pricingTiers: { tier30m: 1000, tier60m: 2000, tier120m: 3600 },
       meetingUrl: 'https://meet.google.com/abc-defg-hij',
       ratingAvg: 5.0,
       totalSessions: 2,
@@ -485,9 +507,9 @@ app.post('/api/auth/register', async (req, res) => {
         isOnboarded: false,
         qualifications: { faculty, skills: skillsOrInterests },
         pricingTiers: {
-          tier30m: Math.round(Number(hourlyRate) * 0.6),
+          tier30m: Math.round(Number(hourlyRate) * 0.5),
           tier60m: Number(hourlyRate) || 2000,
-          tier120m: Math.round(Number(hourlyRate) * 1.9),
+          tier120m: Math.round(Number(hourlyRate) * 1.8),
         },
         wallet: {
           balance: normalizedRole === 'mentee' ? 1000 : 0,
@@ -499,7 +521,11 @@ app.post('/api/auth/register', async (req, res) => {
       newUser.calculateLeaderboardScore();
       await newUser.save();
 
-      const token = jwt.sign({ id: newUser._id, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign(
+        { id: newUser._id, role: String(newUser.role).toLowerCase() },
+        JWT_SECRET,
+        { expiresIn: '7d' },
+      );
 
       await logAudit({
         actorId: newUser._id,
@@ -532,9 +558,9 @@ app.post('/api/auth/register', async (req, res) => {
         isOnboarded: false,
         qualifications: { faculty, skills: skillsOrInterests },
         pricingTiers: {
-          tier30m: Math.round(Number(hourlyRate) * 0.6),
+          tier30m: Math.round(Number(hourlyRate) * 0.5),
           tier60m: Number(hourlyRate) || 2000,
-          tier120m: Math.round(Number(hourlyRate) * 1.9),
+          tier120m: Math.round(Number(hourlyRate) * 1.8),
         },
         wallet: {
           balance: normalizedRole === 'mentee' ? 1000 : 0,
@@ -607,8 +633,10 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
+    const normalizedRole = String(user.role || 'mentee').toLowerCase();
+    user.role = normalizedRole;
     const token = isMongoConnected
-      ? jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+      ? jwt.sign({ id: user._id, role: normalizedRole }, JWT_SECRET, { expiresIn: '7d' })
       : 'jwt-demo-token-' + user._id;
 
     await logAudit({
@@ -660,9 +688,9 @@ app.put('/api/users/onboarding', verifyAuth, async (req, res) => {
         const rate = parseFloat(hourlyRate);
         user.hourlyRate = rate;
         user.pricingTiers = {
-          tier30m: parseFloat((rate * 0.6).toFixed(2)),
+          tier30m: parseFloat((rate * 0.5).toFixed(2)),
           tier60m: rate,
-          tier120m: parseFloat((rate * 1.9).toFixed(2)),
+          tier120m: parseFloat((rate * 1.8).toFixed(2)),
         };
       }
       user.isOnboarded = true;
@@ -699,9 +727,9 @@ app.put('/api/users/onboarding', verifyAuth, async (req, res) => {
         const rate = parseFloat(hourlyRate);
         user.hourlyRate = rate;
         user.pricingTiers = {
-          tier30m: parseFloat((rate * 0.6).toFixed(2)),
+          tier30m: parseFloat((rate * 0.5).toFixed(2)),
           tier60m: rate,
-          tier120m: parseFloat((rate * 1.9).toFixed(2)),
+          tier120m: parseFloat((rate * 1.8).toFixed(2)),
         };
       }
 
@@ -813,6 +841,63 @@ app.put('/api/users/profile', verifyAuth, async (req, res) => {
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /api/v1/mentors/profile: Update the authenticated mentor's commercial profile.
+app.patch('/api/v1/mentors/profile', verifyAuth, async (req, res) => {
+  try {
+    if (String(req.user.role).toLowerCase() !== 'mentor') {
+      return res.status(403).json({ error: 'Only mentors can update mentor pricing.' });
+    }
+
+    const hourlyRate = Number(req.body.hourlyRateNPR);
+    const monthlyRate = Number(req.body.monthlyRateNPR);
+    const meetingUrl = String(req.body.meetingUrl || '').trim();
+    if (!Number.isSafeInteger(hourlyRate) || hourlyRate <= 0 ||
+        !Number.isSafeInteger(monthlyRate) || monthlyRate <= 0) {
+      return res.status(400).json({ error: 'Hourly and monthly rates must be whole positive NPR amounts.' });
+    }
+    if (meetingUrl && !/^https?:\/\//i.test(meetingUrl)) {
+      return res.status(400).json({ error: 'Meeting URL must start with http:// or https://.' });
+    }
+
+    const fields = {
+      hourlyRate,
+      pricing: { hourly: hourlyRate, monthly: monthlyRate },
+      pricingTiers: {
+        tier30m: Math.round(hourlyRate * 0.5),
+        tier60m: hourlyRate,
+        tier120m: Math.round(hourlyRate * 1.8),
+      },
+      'mentorProfile.monthlyRate': monthlyRate,
+      meetingUrl,
+    };
+    let user;
+    const userId = req.user._id || req.user.id;
+    if (isMongoConnected) {
+      user = await User.findByIdAndUpdate(userId, { $set: fields }, {
+        new: true,
+        runValidators: true,
+      });
+    } else {
+      user = (global.ymentorMemoryStore?.users || []).find(
+        (item) => String(item._id || item.id) === String(userId),
+      );
+      if (user) {
+        user.hourlyRate = hourlyRate;
+        user.pricing = { hourly: hourlyRate, monthly: monthlyRate };
+        user.pricingTiers = fields.pricingTiers;
+        user.mentorProfile ||= {};
+        user.mentorProfile.monthlyRate = monthlyRate;
+        user.meetingUrl = meetingUrl;
+      }
+    }
+    if (!user) return res.status(404).json({ error: 'Mentor account not found.' });
+    return res.json({ message: 'Mentor pricing updated successfully.', user });
+  } catch (error) {
+    console.error('Mentor profile update error:', error);
+    return res.status(500).json({ error: 'Unable to update mentor pricing.' });
   }
 });
 
@@ -1048,8 +1133,10 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
         return res.status(404).json({ error: 'Mentee or Mentor not found.' });
       }
       const expectedPrice = Number(durationMinutes) === 30
-        ? Number(mentor.pricingTiers?.tier30m ?? mentor.hourlyRate / 2)
-        : Math.round(mentor.hourlyRate * Number(durationMinutes) / 60);
+        ? Number(mentor.pricingTiers?.tier30m ?? mentor.hourlyRate * 0.5)
+        : Number(durationMinutes) === 120
+            ? Number(mentor.pricingTiers?.tier120m ?? mentor.hourlyRate * 1.8)
+            : Math.round(mentor.hourlyRate * Number(durationMinutes) / 60);
       if (mentor.role !== 'mentor' || mentor.status !== 'active' || expectedPrice !== numPrice) {
         return res.status(400).json({ error: 'The mentor is unavailable or the submitted price does not match the selected session.' });
       }
@@ -1136,8 +1223,10 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
         return res.status(404).json({ error: 'Mentee or Mentor not found.' });
       }
       const expectedPrice = Number(durationMinutes) === 30
-        ? Number(mentor.pricingTiers?.tier30m ?? mentor.hourlyRate / 2)
-        : Math.round(mentor.hourlyRate * Number(durationMinutes) / 60);
+        ? Number(mentor.pricingTiers?.tier30m ?? mentor.hourlyRate * 0.5)
+        : Number(durationMinutes) === 120
+            ? Number(mentor.pricingTiers?.tier120m ?? mentor.hourlyRate * 1.8)
+            : Math.round(mentor.hourlyRate * Number(durationMinutes) / 60);
       if (mentor.role !== 'mentor' || mentor.status !== 'active' || expectedPrice !== numPrice) {
         return res.status(400).json({ error: 'The mentor is unavailable or the submitted price does not match the selected session.' });
       }

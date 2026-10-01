@@ -275,10 +275,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 TextField(
                   controller: _hourlyRateCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     prefixText: 'NPR ',
                     prefixStyle: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold),
                     hintText: '1500',
                   ),
                 ),

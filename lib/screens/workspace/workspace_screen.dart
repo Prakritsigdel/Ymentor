@@ -8,6 +8,7 @@ import '../../models/workspace_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/common/brand_footer.dart';
+import '../../widgets/chat_subtab_widget.dart';
 
 class WorkspaceScreen extends StatefulWidget {
   const WorkspaceScreen({super.key});
@@ -23,6 +24,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   String _category = 'hourly';
   bool _loadingWorkspaces = true;
   bool _loadingNotes = false;
+  String? _workspaceError;
+  String? _notesError;
+  int _subTab = 0;
 
   @override
   void initState() {
@@ -39,6 +43,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
     setState(() => _loadingWorkspaces = true);
     try {
+      setState(() => _workspaceError = null);
       final ws = await ApiService.getUserWorkspaces(user.id);
       if (!mounted) return;
 
@@ -66,8 +71,11 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
       } else if (mounted) {
         setState(() => _notes = []);
       }
-    } catch (_) {
-      // ignore
+    } catch (error) {
+      if (mounted) {
+        setState(() => _workspaceError =
+            'Unable to connect to the workspace service. Check that the backend is running and the app API URL is reachable.\n$error');
+      }
     } finally {
       if (mounted) setState(() => _loadingWorkspaces = false);
     }
@@ -77,11 +85,15 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     if (_selected == null) return;
     setState(() => _loadingNotes = true);
     try {
+      setState(() => _notesError = null);
       final notes = await ApiService.getWorkspaceNotes(_selected!.id);
       if (!mounted) return;
       setState(() => _notes = notes);
-    } catch (_) {
-      // ignore
+    } catch (error) {
+      if (mounted) {
+        setState(
+            () => _notesError = 'Unable to load workspace documents.\n$error');
+      }
     } finally {
       if (mounted) setState(() => _loadingNotes = false);
     }
@@ -226,131 +238,175 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    return Column(
-      children: [
-        SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'PDF Workspace',
-                style: GoogleFonts.playfairDisplay(
-                  color: AppColors.textPrimary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
+    return DefaultTabController(
+      length: 4,
+      initialIndex: _subTab,
+      child: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _subTab == 2
+                      ? '1-on-1 Direct Chat'
+                      : _subTab == 3
+                          ? 'Classroom PDF Assets'
+                          : 'PDF Workspace',
+                  style: GoogleFonts.playfairDisplay(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadWorkspaces,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'hourly',
-                      icon: Icon(Icons.flash_on_outlined),
-                      label: Text('Hourly Workspaces'),
-                    ),
-                    ButtonSegment(
-                      value: 'monthly',
-                      icon: Icon(Icons.calendar_month_outlined),
-                      label: Text('Monthly Workspaces'),
-                    ),
-                  ],
-                  selected: {_category},
-                  onSelectionChanged: (selection) {
-                    final matching = _workspaces
-                        .where((workspace) =>
-                            workspace.planType == selection.first)
-                        .toList();
-                    setState(() {
-                      _category = selection.first;
-                      _selected = matching.isEmpty ? null : matching.first;
-                      _notes = [];
-                    });
-                    _loadNotes();
-                  },
-                ),
-                const SizedBox(height: 14),
-                if (!auth.isLoggedIn)
-                  const _WorkspaceMessage(
-                    icon: Icons.lock_outline,
-                    message: 'Log in to see your classroom workspaces.',
-                  )
-                else if (_loadingWorkspaces)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_workspaces
-                    .where((workspace) => workspace.planType == _category)
-                    .isEmpty)
-                  const _WorkspaceMessage(
-                    icon: Icons.folder_open,
-                    message: 'No workspaces in this category yet.',
-                  )
-                else ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: DropdownButtonFormField<Workspace>(
-                      initialValue: _selected,
-                      dropdownColor: AppColors.surface,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Active Classroom Workspace',
-                        prefixIcon:
-                            Icon(Icons.school_outlined, color: AppColors.mint),
-                      ),
-                      items: _workspaces
-                          .where((workspace) => workspace.planType == _category)
-                          .map((workspace) => DropdownMenuItem(
-                                value: workspace,
-                                child: Text(
-                                  workspace.topic,
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (workspace) {
-                        setState(() => _selected = workspace);
-                        _loadNotes();
-                      },
-                    ),
-                  ),
-                  if (_loadingNotes)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_notes.isEmpty)
-                    const _WorkspaceMessage(
-                      icon: Icons.assignment_outlined,
-                      message: 'No assignments attached to this workspace yet.',
-                    )
-                  else
-                    ..._notes.map(
-                      (note) => _NoteCard(
-                        note: note,
-                        onOpenPdf: () => _previewPdf(note),
-                        onToggle: () => _toggleNote(note),
-                        onComment: () => _addComment(note),
-                      ),
-                    ),
-                ],
-                const BrandFooter(),
+          SafeArea(
+            bottom: false,
+            child: TabBar(
+              onTap: (index) => setState(() => _subTab = index),
+              isScrollable: true,
+              tabs: const [
+                Tab(text: 'Hourly Workspaces'),
+                Tab(text: 'Monthly Workspaces'),
+                Tab(text: 'Direct Chat'),
+                Tab(text: 'PDF Assets'),
               ],
             ),
           ),
-        ),
-      ],
+          Expanded(
+            child: _subTab == 2
+                ? (_selected == null
+                    ? const _WorkspaceMessage(
+                        icon: Icons.chat_bubble_outline,
+                        message: 'Select a workspace to open direct chat.',
+                      )
+                    : ChatSubtabWidget(workspaceId: _selected!.id))
+                : RefreshIndicator(
+                    onRefresh: _loadWorkspaces,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      children: [
+                        if (_subTab != 3)
+                          SegmentedButton<String>(
+                            segments: const [
+                              ButtonSegment(
+                                value: 'hourly',
+                                icon: Icon(Icons.flash_on_outlined),
+                                label: Text('Hourly Workspaces'),
+                              ),
+                              ButtonSegment(
+                                value: 'monthly',
+                                icon: Icon(Icons.calendar_month_outlined),
+                                label: Text('Monthly Workspaces'),
+                              ),
+                            ],
+                            selected: {_category},
+                            onSelectionChanged: (selection) {
+                              final matching = _workspaces
+                                  .where((workspace) =>
+                                      workspace.planType == selection.first)
+                                  .toList();
+                              setState(() {
+                                _category = selection.first;
+                                _selected =
+                                    matching.isEmpty ? null : matching.first;
+                                _notes = [];
+                              });
+                              _loadNotes();
+                            },
+                          ),
+                        const SizedBox(height: 14),
+                        if (!auth.isLoggedIn)
+                          const _WorkspaceMessage(
+                            icon: Icons.lock_outline,
+                            message: 'Log in to see your classroom workspaces.',
+                          )
+                        else if (_workspaceError != null)
+                          _WorkspaceError(
+                            message: _workspaceError!,
+                            onRetry: _loadWorkspaces,
+                          )
+                        else if (_loadingWorkspaces)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 48),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (_workspaces
+                            .where(
+                                (workspace) => workspace.planType == _category)
+                            .isEmpty)
+                          const _WorkspaceMessage(
+                            icon: Icons.folder_open,
+                            message: 'No workspaces in this category yet.',
+                          )
+                        else ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: DropdownButtonFormField<Workspace>(
+                              initialValue: _selected,
+                              dropdownColor:
+                                  Theme.of(context).colorScheme.surface,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Active Classroom Workspace',
+                                prefixIcon: Icon(Icons.school_outlined,
+                                    color: AppColors.mint),
+                              ),
+                              items: _workspaces
+                                  .where((workspace) =>
+                                      workspace.planType == _category)
+                                  .map((workspace) => DropdownMenuItem(
+                                        value: workspace,
+                                        child: Text(
+                                          workspace.topic,
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ))
+                                  .toList(),
+                              onChanged: (workspace) {
+                                setState(() => _selected = workspace);
+                                _loadNotes();
+                              },
+                            ),
+                          ),
+                          if (_notesError != null)
+                            _WorkspaceError(
+                              message: _notesError!,
+                              onRetry: _loadNotes,
+                            )
+                          else if (_loadingNotes)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 32),
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else if (_notes.isEmpty)
+                            const _WorkspaceMessage(
+                              icon: Icons.assignment_outlined,
+                              message:
+                                  'No assignments attached to this workspace yet.',
+                            )
+                          else
+                            ..._notes.map(
+                              (note) => _NoteCard(
+                                note: note,
+                                onOpenPdf: () => _previewPdf(note),
+                                onToggle: () => _toggleNote(note),
+                                onComment: () => _addComment(note),
+                              ),
+                            ),
+                        ],
+                        const BrandFooter(),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -374,6 +430,36 @@ class _WorkspaceMessage extends StatelessWidget {
             textAlign: TextAlign.center,
             style:
                 const TextStyle(color: AppColors.textSecondary, height: 1.45),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkspaceError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _WorkspaceError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_outlined,
+              size: 48, color: AppColors.danger),
+          const SizedBox(height: 14),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry connection'),
           ),
         ],
       ),
@@ -461,10 +547,9 @@ class _NoteCardState extends State<_NoteCard> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceRaised,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppColors.border),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   children: [

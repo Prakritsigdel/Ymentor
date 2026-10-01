@@ -63,7 +63,8 @@ class AppLogoAvatar extends StatelessWidget {
         color: backgroundColor,
         shape: shape,
         borderRadius: borderRadius,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)),
       ),
       child: image,
     );

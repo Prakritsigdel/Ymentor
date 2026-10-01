@@ -47,20 +47,21 @@ enum AppButtonSize { sm, md, lg }
 class _AppButtonState extends State<AppButton> {
   bool _pressed = false;
 
-  (Color bg, Color fg, Border? border) get _style {
+  (Color bg, Color fg, Border? border) _style(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     switch (widget.variant) {
       case AppButtonVariant.primary:
-        return (AppColors.primary, Colors.white, null);
+        return (scheme.primary, scheme.onPrimary, null);
       case AppButtonVariant.secondary:
-        return (AppColors.surface, AppColors.textPrimary,
-            Border.all(color: AppColors.border));
+        return (scheme.surface, scheme.onSurface,
+            Border.all(color: scheme.outline));
       case AppButtonVariant.outlined:
         return (Colors.transparent, AppColors.primary,
             Border.all(color: AppColors.primary, width: 1.5));
       case AppButtonVariant.ghost:
         return (Colors.transparent, AppColors.textSecondary, null);
       case AppButtonVariant.danger:
-        return (AppColors.error, Colors.white, null);
+        return (scheme.error, scheme.onError, null);
     }
   }
 
@@ -85,7 +86,7 @@ class _AppButtonState extends State<AppButton> {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, border) = _style;
+    final (bg, fg, border) = _style(context);
     final isDisabled = widget.onPressed == null || widget.isLoading;
 
     return GestureDetector(

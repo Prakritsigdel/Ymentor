@@ -33,7 +33,7 @@ class MentorCard extends StatelessWidget {
         mentor.name.trim().isEmpty ? 'Ym' : mentor.name.trim()[0].toUpperCase();
 
     return Card(
-      color: AppColors.surface,
+      color: Theme.of(context).cardColor,
       margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -92,7 +92,7 @@ class MentorCard extends StatelessWidget {
                               child: Text(
                                 mentor.name.isNotEmpty ? mentor.name : 'Mentor',
                                 style: GoogleFonts.playfairDisplay(
-                                  color: AppColors.textPrimary,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -133,7 +133,7 @@ class MentorCard extends StatelessWidget {
                           Text(
                             displayHeadline,
                             style: GoogleFonts.plusJakartaSans(
-                              color: AppColors.textSecondary,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 12,
                             ),
                             maxLines: 2,
@@ -180,7 +180,7 @@ class MentorCard extends StatelessWidget {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     visualDensity: VisualDensity.compact,
                   ),

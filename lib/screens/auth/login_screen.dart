@@ -7,6 +7,7 @@ import '../../widgets/auth/social_auth_button.dart';
 import '../../widgets/common/app_logo_widget.dart';
 import '../checkout_screen.dart';
 import '../root_shell.dart';
+import '../admin/admin_dashboard_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       SnackBar(
         content: Text(
           '$provider Sign-In will be available in the upcoming production release. '
-          'Please use Email/Password for this demo.',
+          'Please use your registered email and password.',
         ),
       ),
     );
@@ -117,8 +118,14 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
-      Navigator.of(context, rootNavigator: true)
-          .popUntil((route) => route.isFirst);
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => auth.isAdmin
+              ? const AdminDashboardScreen()
+              : RootShell(initialIndex: auth.isMentor ? 4 : 0),
+        ),
+        (route) => false,
+      );
     }
   }
 
@@ -238,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _loading ? null : _submit,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                     ),
                     child: _loading

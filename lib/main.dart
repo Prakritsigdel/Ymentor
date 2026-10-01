@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
+import 'config/app_routes.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_controller.dart';
 import 'screens/root_shell.dart';
@@ -46,6 +47,7 @@ class YmentorApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: context.watch<ThemeController>().mode,
+        routes: AppRoutes.routes,
         home: const AuthWrapper(),
       ),
     );
@@ -119,6 +121,6 @@ class AuthWrapper extends StatelessWidget {
     }
 
     // 3. MENTOR / MENTEE with completed onboarding
-    return const RootShell();
+    return RootShell(initialIndex: user.isMentor ? 4 : 0);
   }
 }

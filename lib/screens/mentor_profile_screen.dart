@@ -103,8 +103,9 @@ class _MentorProfileScreenState extends State<MentorProfileScreen>
       );
       return;
     }
-    final price =
-        monthly ? monthlyRate : mentor.hourlyRate * _selectedDuration / 60;
+    final price = monthly
+        ? monthlyRate
+        : mentor.pricingTiers.priceFor(_selectedDuration);
     final auth = context.read<AuthProvider>();
     if (!auth.isLoggedIn) {
       await auth.savePendingBooking(PendingBooking(
