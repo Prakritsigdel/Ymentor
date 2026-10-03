@@ -49,12 +49,17 @@ class AppEmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: color.withValues(alpha: 0.08),
-                border: Border.all(color: color.withValues(alpha: 0.18), width: 1.5),
+                border: Border.all(
+                    color: color.withValues(alpha: 0.18), width: 1.5),
               ),
               child: Icon(icon, size: iconSize, color: color),
             )
                 .animate()
-                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: 350.ms, curve: Curves.easeOut)
+                .scale(
+                    begin: const Offset(0.8, 0.8),
+                    end: const Offset(1, 1),
+                    duration: 350.ms,
+                    curve: Curves.easeOut)
                 .fadeIn(duration: 350.ms),
 
             const SizedBox(height: 20),
@@ -67,7 +72,10 @@ class AppEmptyState extends StatelessWidget {
                 color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
-            ).animate().fadeIn(delay: 80.ms, duration: 300.ms).slideY(begin: 0.1, end: 0),
+            )
+                .animate()
+                .fadeIn(delay: 80.ms, duration: 300.ms)
+                .slideY(begin: 0.1, end: 0),
 
             if (subtitle != null) ...[
               const SizedBox(height: 8),
@@ -89,7 +97,8 @@ class AppEmptyState extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.mint),
                   foregroundColor: AppColors.mint,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 11),
                 ),
                 child: Text(
                   action!.label,

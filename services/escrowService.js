@@ -7,7 +7,7 @@ function splitEscrow(grossAmount) {
   return {
     currency: 'NPR',
     grossAmount: gross,
-    platformFee: gross - mentorPayout,
+    platformFee: Math.round(gross * 0.2),
     mentorPayout,
   };
 }

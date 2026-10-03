@@ -47,7 +47,9 @@ class PrimaryButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, color: Theme.of(context).colorScheme.onPrimary, size: 20),
+                    Icon(icon,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        size: 20),
                     const SizedBox(width: 8),
                   ],
                   Text(

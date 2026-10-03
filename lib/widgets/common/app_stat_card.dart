@@ -121,12 +121,12 @@ class AppStatRow extends StatelessWidget {
 
 /// Convenience stat icons that map common Ymentor metrics to Iconsax icons
 class AppStatIcons {
-  static const IconData wallet       = IconsaxPlusBold.wallet;
-  static const IconData escrow       = IconsaxPlusBold.lock;
-  static const IconData sessions     = IconsaxPlusBold.people;
-  static const IconData rating       = IconsaxPlusBold.star_1;
-  static const IconData earnings     = IconsaxPlusBold.money;
-  static const IconData leaderboard  = IconsaxPlusBold.ranking;
+  static const IconData wallet = IconsaxPlusBold.wallet;
+  static const IconData escrow = IconsaxPlusBold.lock;
+  static const IconData sessions = IconsaxPlusBold.people;
+  static const IconData rating = IconsaxPlusBold.star_1;
+  static const IconData earnings = IconsaxPlusBold.money;
+  static const IconData leaderboard = IconsaxPlusBold.ranking;
   static const IconData pendingUsers = IconsaxPlusBold.clock;
-  static const IconData fees         = IconsaxPlusBold.percentage_circle;
+  static const IconData fees = IconsaxPlusBold.percentage_circle;
 }

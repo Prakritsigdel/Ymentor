@@ -128,9 +128,12 @@ class AppTheme {
       cardColor: surface,
       dividerColor: muted.withValues(alpha: 0.2),
       textTheme: TextTheme(
-        displayLarge: headline.copyWith(color: text, fontWeight: FontWeight.w700),
-        headlineLarge: headline.copyWith(color: text, fontWeight: FontWeight.w700),
-        headlineMedium: headline.copyWith(color: text, fontWeight: FontWeight.w700),
+        displayLarge:
+            headline.copyWith(color: text, fontWeight: FontWeight.w700),
+        headlineLarge:
+            headline.copyWith(color: text, fontWeight: FontWeight.w700),
+        headlineMedium:
+            headline.copyWith(color: text, fontWeight: FontWeight.w700),
         titleLarge: body.copyWith(color: text, fontWeight: FontWeight.w700),
         titleMedium: body.copyWith(color: text, fontWeight: FontWeight.w600),
         bodyLarge: body.copyWith(color: text),
@@ -147,14 +150,16 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: text,
           side: BorderSide(color: muted.withValues(alpha: 0.35)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -174,10 +179,13 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: brightness == Brightness.dark ? const Color(0xFF2A2A2A) : AppColors.surfaceRaised,
+        backgroundColor: brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : AppColors.surfaceRaised,
         labelStyle: body.copyWith(color: text, fontSize: 12),
         side: BorderSide(color: muted.withValues(alpha: 0.25)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

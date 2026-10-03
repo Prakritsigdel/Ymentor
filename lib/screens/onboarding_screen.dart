@@ -130,7 +130,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border),
                 ),
@@ -183,7 +183,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _selectedFaculty,
-                dropdownColor: AppColors.surface,
+                dropdownColor: Theme.of(context).colorScheme.surface,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.account_balance,
                       color: AppColors.textSecondary),

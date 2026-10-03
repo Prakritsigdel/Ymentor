@@ -5,9 +5,110 @@ const User = require('../../models/User');
 const Workspace = require('../../models/Workspace');
 const ChatConversation = require('../../models/ChatConversation');
 const { splitEscrow } = require('../../services/escrowService');
+const { RtcTokenBuilder, RtcRole } = require('agora-token');
 
 function createBookingsRouter({ verifyAuth }) {
   const router = express.Router();
+
+  router.post('/v1/bookings/:sessionId/rtc-token', verifyAuth, async (req, res) => {
+    try {
+      const appId = process.env.AGORA_APP_ID;
+      const certificate = process.env.AGORA_APP_CERTIFICATE;
+      if (!appId || !certificate) {
+        return res.status(503).json({ error: 'Video calling is not configured on the server.' });
+      }
+
+      const sessionId = req.params.sessionId;
+      const userId = String(req.user._id || req.user.id);
+      let participantValid = false;
+
+      // 1. Try finding a workspace directly
+      let workspace = null;
+      if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(sessionId)) {
+        workspace = await Workspace.findById(sessionId).lean();
+      } else {
+        workspace = (global.ymentorMemoryStore?.workspaces || []).find(
+          (w) => String(w._id || w.id) === String(sessionId),
+        );
+      }
+
+      if (workspace) {
+        const wsMentorId = String(workspace.mentorId?._id || workspace.mentorId?.id || workspace.mentorId);
+        const wsMenteeId = String(workspace.menteeId?._id || workspace.menteeId?.id || workspace.menteeId);
+        if (wsMentorId === userId || wsMenteeId === userId) {
+          participantValid = true;
+        } else {
+          return res.status(403).json({ error: 'You are not a participant in this workspace.' });
+        }
+      }
+
+      // 2. Try finding a booking directly or via workspace
+      const booking = await findBooking(sessionId);
+      if (booking) {
+        const bMentorId = String(booking.mentorId?._id || booking.mentorId?.id || booking.mentorId);
+        const bMenteeId = String(booking.menteeId?._id || booking.menteeId?.id || booking.menteeId);
+        if (bMentorId === userId || bMenteeId === userId) {
+          participantValid = true;
+        } else if (!workspace) {
+          return res.status(403).json({ error: 'You are not a participant in this session.' });
+        }
+        const bStatus = String(booking.status || 'ACTIVE').toUpperCase();
+        if (['CANCELLED', 'REFUNDED'].includes(bStatus)) {
+          return res.status(409).json({ error: 'This session is not available for calling.' });
+        }
+      } else if (!workspace) {
+        return res.status(404).json({ error: 'Session or workspace not found.' });
+      }
+
+      if (!participantValid) {
+        return res.status(403).json({ error: 'You are not authorized to join this session.' });
+      }
+
+      // Resolve canonical channel ID so booking and workspace lookups always map to the identical channel
+      let canonicalId = String(sessionId);
+      if (workspace) {
+        canonicalId = String(workspace._id || workspace.id);
+      } else if (booking) {
+        if (booking.workspaceId) {
+          canonicalId = String(booking.workspaceId);
+        } else if (mongoose.connection.readyState === 1) {
+          const ws = await Workspace.findOne({
+            mentorId: booking.mentorId,
+            menteeId: booking.menteeId,
+            planType: booking.planType,
+          }).lean();
+          if (ws) canonicalId = String(ws._id || ws.id);
+        } else {
+          const ws = (global.ymentorMemoryStore?.workspaces || []).find(
+            (w) =>
+              String(w.mentorId) === String(booking.mentorId) &&
+              String(w.menteeId) === String(booking.menteeId) &&
+              w.planType === booking.planType,
+          );
+          if (ws) canonicalId = String(ws._id || ws.id);
+        }
+      }
+
+      // Sanitize channel name: Agora only allows alphanumeric + underscore
+      const rawChannel = 'workspace_' + canonicalId;
+      const channelName = rawChannel.replace(/[^a-zA-Z0-9_]/g, '');
+      const uid = 0; // Must match Flutter joinChannel(uid: 0)
+      const expiresAt = Math.floor(Date.now() / 1000) + 86400; // 24h
+      const token = RtcTokenBuilder.buildTokenWithUid(
+        appId,
+        certificate,
+        channelName,
+        uid,
+        RtcRole.PUBLISHER,
+        expiresAt,
+      );
+      console.log(`[RTC] Token generated for channel="${channelName}" uid=${uid}`);
+      return res.json({ token, channelName, appId, uid });
+    } catch (error) {
+      console.error('RTC token error:', error);
+      return res.status(500).json({ error: 'Unable to create a video call token.' });
+    }
+  });
 
   router.post('/bookings/monthly', verifyAuth, async (req, res) => {
     try {
@@ -104,6 +205,34 @@ function createBookingsRouter({ verifyAuth }) {
   async function findUser(id) {
     if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(id)) return User.findById(id);
     return (global.ymentorMemoryStore?.users || []).find((user) => String(user._id || user.id) === id) || null;
+  }
+
+  async function findBooking(id) {
+    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(id)) {
+      const direct = await Booking.findById(id);
+      if (direct) return direct;
+      const workspace = await Workspace.findById(id).lean();
+      if (workspace) {
+        return Booking.findOne({
+          mentorId: workspace.mentorId,
+          menteeId: workspace.menteeId,
+          planType: workspace.planType,
+        }).sort({ createdAt: -1 });
+      }
+      return null;
+    }
+    const direct = (global.ymentorMemoryStore?.bookings || [])
+      .find((booking) => String(booking._id || booking.id) === String(id));
+    if (direct) return direct;
+    const workspace = (global.ymentorMemoryStore?.workspaces || [])
+      .find((item) => String(item._id || item.id) === String(id));
+    if (!workspace) return null;
+    return (global.ymentorMemoryStore?.bookings || [])
+      .filter((booking) =>
+        String(booking.mentorId) === String(workspace.mentorId) &&
+        String(booking.menteeId) === String(workspace.menteeId) &&
+        booking.planType === workspace.planType)
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0] || null;
   }
   return router;
 }

@@ -8,9 +8,14 @@ import 'providers/theme_controller.dart';
 import 'screens/root_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'widgets/common/app_logo_widget.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+const bool startAtLoginForTesting = bool.fromEnvironment(
+  'YMENTOR_START_AT_LOGIN',
+  defaultValue: false,
+);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,8 +109,12 @@ class AuthWrapper extends StatelessWidget {
       );
     }
 
+    if (startAtLoginForTesting) {
+      return const LoginScreen();
+    }
+
     if (!auth.isLoggedIn || auth.user == null) {
-      return const RootShell();
+      return const LoginScreen();
     }
 
     final user = auth.user!;

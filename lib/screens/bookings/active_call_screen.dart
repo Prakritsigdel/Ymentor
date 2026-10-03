@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/hourly_session_updates.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../chat/chat_screen.dart';
+import '../workspace/workspace_screen.dart';
 import '../../config/theme.dart';
 import '../../models/booking_model.dart';
 import '../../providers/auth_provider.dart';
@@ -50,17 +50,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   }
 
   Future<void> _joinCall(Booking booking) async {
-    final uri = Uri.tryParse(booking.meetingUrl);
-    if (uri != null) {
-      try {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open video call: $e')),
-        );
-      }
-    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const WorkspaceScreen()),
+    );
   }
 
   Future<void> _markComplete(Booking booking) async {
@@ -357,40 +349,28 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                             const SizedBox(height: 12),
                             _financialRow(
                                 'Mentor net payout',
-                                b.financials.mentorNetPayout80Percent,
+                                b.mentorPayoutCalculated,
                                 AppColors.mint),
                             const SizedBox(height: 5),
                             _financialRow(
                                 'Platform protection fee',
-                                b.financials.platformCommission20Percent,
+                                b.platformFeeCalculated,
                                 AppColors.textSecondary),
                             const SizedBox(height: 14),
                             Row(
                               children: [
                                 Expanded(
                                   child: ElevatedButton.icon(
-                                    onPressed: b.meetingUrl.trim().isEmpty
-                                        ? null
-                                        : () => _joinCall(b),
+                                    onPressed: () => _joinCall(b),
                                     icon: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         _LiveDot(),
                                         SizedBox(width: 8),
-                                        Icon(Icons.videocam, size: 18),
+                                        Icon(Icons.forum_outlined, size: 18),
                                       ],
                                     ),
-                                    label: Text(
-                                      b.meetingUrl.trim().isEmpty
-                                          ? 'MEETING LINK UNAVAILABLE'
-                                          : Uri.tryParse(b.meetingUrl)
-                                                      ?.host
-                                                      .contains(
-                                                          'meet.google.com') ==
-                                                  true
-                                              ? 'JOIN GOOGLE MEET CALL'
-                                              : 'JOIN VIDEO CALL',
-                                    ),
+                                    label: const Text('ENTER IN-APP WORKSPACE'),
                                   ),
                                 ),
                                 if (isHeld &&
@@ -426,14 +406,14 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     );
   }
 
-  Widget _financialRow(String label, double amount, Color color) {
+  Widget _financialRow(String label, double? amount, Color color) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
             style:
                 const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        Text(CurrencyUtils.formatNPR(amount),
+        Text(amount == null ? 'Unavailable' : CurrencyUtils.formatNPR(amount),
             style: TextStyle(
                 color: color, fontSize: 12, fontWeight: FontWeight.w700)),
       ],

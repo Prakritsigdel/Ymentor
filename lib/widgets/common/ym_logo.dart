@@ -34,7 +34,8 @@ class YmLogo extends StatelessWidget {
             ? Image.asset(
                 'assets/images/app_logo.png',
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildNativeLogo(),
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildNativeLogo(),
               )
             : _buildNativeLogo(),
       ),

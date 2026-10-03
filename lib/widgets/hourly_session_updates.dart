@@ -24,11 +24,10 @@ class HourlySessionUpdates extends StatelessWidget {
                   const Icon(Icons.notifications_none, color: AppColors.star),
                   const SizedBox(width: 8),
                   Text('Session updates',
-                      style:
-                          Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              )),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          )),
                 ],
               ),
               const SizedBox(height: 8),
@@ -38,7 +37,7 @@ class HourlySessionUpdates extends StatelessWidget {
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               Text(
-                'Google Meet link generated · $durationMinutes minutes',
+                'Session active. Access your workspace notes, files, and chat below. · $durationMinutes minutes',
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),

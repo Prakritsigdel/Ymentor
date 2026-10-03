@@ -103,9 +103,9 @@ class _MentorProfileScreenState extends State<MentorProfileScreen>
       );
       return;
     }
-    final price = monthly
-        ? monthlyRate
-        : mentor.pricingTiers.priceFor(_selectedDuration);
+    final hourlyRate = mentor.hourlyRate >= 500 ? mentor.hourlyRate : 1000.0;
+    final hours = _selectedDuration / 60.0;
+    final price = monthly ? monthlyRate : (hourlyRate * hours);
     final auth = context.read<AuthProvider>();
     if (!auth.isLoggedIn) {
       await auth.savePendingBooking(PendingBooking(
@@ -135,6 +135,8 @@ class _MentorProfileScreenState extends State<MentorProfileScreen>
           planType: monthly ? 'monthly' : 'hourly',
           monthlyPrice: monthlyRate,
           scheduledTime: _selectedTime,
+          mentorHourlyRate: monthly ? 0 : hourlyRate,
+          mentor: mentor,
         ),
       ),
     );

@@ -19,22 +19,24 @@ class AppBadge extends StatelessWidget {
   });
 
   /// Auto-coloured role badge (admin/mentor/mentee)
-  factory AppBadge.role(String role, {Key? key, AppBadgeSize size = AppBadgeSize.md}) {
+  factory AppBadge.role(String role,
+      {Key? key, AppBadgeSize size = AppBadgeSize.md}) {
     final (label, color) = switch (role.toLowerCase()) {
-      'admin'   => ('⚡ ADMIN',  AppColors.roleAdmin),
-      'mentor'  => ('🎓 MENTOR', AppColors.roleMentor),
-      _         => ('📚 MENTEE', AppColors.roleMentee),
+      'admin' => ('⚡ ADMIN', AppColors.roleAdmin),
+      'mentor' => ('🎓 MENTOR', AppColors.roleMentor),
+      _ => ('📚 MENTEE', AppColors.roleMentee),
     };
     return AppBadge(key: key, label: label, color: color, size: size);
   }
 
   /// Semantic status badge (active / pending_approval / suspended)
-  factory AppBadge.status(String status, {Key? key, AppBadgeSize size = AppBadgeSize.sm}) {
+  factory AppBadge.status(String status,
+      {Key? key, AppBadgeSize size = AppBadgeSize.sm}) {
     final (label, color) = switch (status.toLowerCase()) {
-      'active'           => ('● ACTIVE',   AppColors.verified),
-      'pending_approval' => ('◉ PENDING',  AppColors.warning),
-      'suspended'        => ('✕ SUSPENDED', AppColors.error),
-      _                  => (status.toUpperCase(), AppColors.textSecondary),
+      'active' => ('● ACTIVE', AppColors.verified),
+      'pending_approval' => ('◉ PENDING', AppColors.warning),
+      'suspended' => ('✕ SUSPENDED', AppColors.error),
+      _ => (status.toUpperCase(), AppColors.textSecondary),
     };
     return AppBadge(key: key, label: label, color: color, size: size);
   }
@@ -45,16 +47,19 @@ class AppBadge extends StatelessWidget {
   final AppBadgeSize size;
 
   double get _fontSize => switch (size) {
-    AppBadgeSize.sm => 9.0,
-    AppBadgeSize.md => 10.5,
-    AppBadgeSize.lg => 12.0,
-  };
+        AppBadgeSize.sm => 9.0,
+        AppBadgeSize.md => 10.5,
+        AppBadgeSize.lg => 12.0,
+      };
 
   EdgeInsets get _padding => switch (size) {
-    AppBadgeSize.sm => const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-    AppBadgeSize.md => const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    AppBadgeSize.lg => const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-  };
+        AppBadgeSize.sm =>
+          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        AppBadgeSize.md =>
+          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        AppBadgeSize.lg =>
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      };
 
   @override
   Widget build(BuildContext context) {

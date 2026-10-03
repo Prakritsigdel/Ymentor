@@ -19,35 +19,62 @@ function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
         const disputes = global.ymentorMemoryStore?.disputes || [];
         return res.json({
           pendingKyc: users.filter((user) => user.role === 'mentor' && user.status === 'pending_approval').length,
+          gmv: bookings
+            .reduce((sum, booking) => sum + Number(booking.financials?.grossAmount || 0), 0),
           activeEscrow: bookings
             .filter((booking) => booking.escrowStatus === 'held_in_escrow')
             .reduce((sum, booking) => sum + Number(booking.financials?.grossAmount || 0), 0),
+          platformFees: bookings
+            .reduce((sum, booking) => sum + Number(booking.platformFee || booking.financials?.platformCommission20Percent || 0), 0),
+          releasedPayouts: bookings
+            .filter((booking) => ['released', 'completed'].includes(booking.escrowStatus))
+            .reduce((sum, booking) => sum + Number(booking.financials?.mentorNetPayout80Percent || 0), 0),
           openDisputes: disputes.filter((dispute) => dispute.status === 'open').length,
           commissionRevenue: bookings
             .filter((booking) => ['released', 'completed'].includes(booking.escrowStatus))
             .reduce((sum, booking) => sum + Number(booking.platformFee || booking.financials?.platformProtectionFee || 0), 0),
         });
       }
-      const [pendingKyc, escrow, openDisputes, commission] = await Promise.all([
+      const [pendingKyc, totals, openDisputes] = await Promise.all([
         User.countDocuments({
           role: 'mentor',
           $or: [{ status: 'pending_approval' }, { verificationStatus: 'PENDING_APPROVAL' }],
         }),
-        Booking.aggregate([
-          { $match: { escrowStatus: 'held_in_escrow' } },
-          { $group: { _id: null, total: { $sum: '$financials.grossAmount' } } },
-        ]),
+        Booking.aggregate([{
+          $group: {
+            _id: null,
+            gmv: { $sum: '$financials.grossAmount' },
+            platformFees: {
+              $sum: {
+                $max: [
+                  '$platformFee',
+                  '$financials.platformCommission20Percent',
+                  '$financials.platformProtectionFee',
+                ],
+              },
+            },
+            activeEscrow: { $sum: { $cond: [{ $eq: ['$escrowStatus', 'held_in_escrow'] }, '$financials.grossAmount', 0] } },
+            releasedPayouts: {
+              $sum: {
+                $cond: [
+                  { $in: ['$escrowStatus', ['released', 'completed']] },
+                  { $ifNull: ['$financials.mentorNetPayout80Percent', 0] },
+                  0,
+                ],
+              },
+            },
+          },
+        }]),
         Dispute.countDocuments({ status: 'open' }),
-        Booking.aggregate([
-          { $match: { escrowStatus: { $in: ['released', 'completed'] } } },
-          { $group: { _id: null, total: { $sum: '$platformFee' } } },
-        ]),
       ]);
       return res.json({
         pendingKyc,
-        activeEscrow: escrow[0]?.total || 0,
+        gmv: totals[0]?.gmv || 0,
+        activeEscrow: totals[0]?.activeEscrow || 0,
+        platformFees: totals[0]?.platformFees || 0,
+        releasedPayouts: totals[0]?.releasedPayouts || 0,
         openDisputes,
-        commissionRevenue: commission[0]?.total || 0,
+        commissionRevenue: totals[0]?.platformFees || 0,
       });
     } catch (error) {
       console.error('Admin summary error:', error);
@@ -303,7 +330,7 @@ function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
     try {
       const config = mongoose.connection.readyState === 1
         ? await PlatformConfig.findOneAndUpdate({ key: 'default' }, { $setOnInsert: { key: 'default' } }, { upsert: true, new: true })
-        : (global.ymentorMemoryStore.config ||= { flatFee: 4, percentageFee: 0, broadcasts: [] });
+        : (global.ymentorMemoryStore.config ||= { broadcasts: [] });
       return res.json(config);
     } catch (error) {
       console.error('Platform config read error:', error);
@@ -311,11 +338,8 @@ function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
     }
   });
   router.put('/config', verifyAuth, verifyRole(['admin']), async (req, res) => {
-    const flatFee = Number(req.body.flatFee);
-    const percentageFee = Number(req.body.percentageFee);
-    if (!Number.isFinite(flatFee) || flatFee < 0 || !Number.isFinite(percentageFee) || percentageFee < 0 || percentageFee > 100) {
-      return res.status(400).json({ error: 'Fee values must be valid non-negative amounts and percentage no greater than 100.' });
-    }
+    const flatFee = 0;
+    const percentageFee = 20;
     try {
       const config = mongoose.connection.readyState === 1
         ? await PlatformConfig.findOneAndUpdate({ key: 'default' }, { flatFee, percentageFee }, { upsert: true, new: true, runValidators: true })
@@ -335,7 +359,7 @@ function createAdminRouter({ verifyAuth, verifyRole, logAudit }) {
         const config = await PlatformConfig.findOneAndUpdate({ key: 'default' }, { $push: { broadcasts: broadcast } }, { upsert: true, new: true });
         return res.status(201).json(config.broadcasts[config.broadcasts.length - 1]);
       }
-      const config = global.ymentorMemoryStore.config ||= { flatFee: 4, percentageFee: 0, broadcasts: [] };
+      const config = global.ymentorMemoryStore.config ||= { broadcasts: [] };
       config.broadcasts.push(broadcast);
       return res.status(201).json(broadcast);
     } catch (error) {

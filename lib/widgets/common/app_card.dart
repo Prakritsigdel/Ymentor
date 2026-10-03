@@ -94,6 +94,9 @@ class AppCard extends StatelessWidget {
     return Container(
       margin: margin,
       child: content,
-    ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.04, end: 0, duration: 250.ms);
+    )
+        .animate()
+        .fadeIn(duration: 250.ms)
+        .slideY(begin: 0.04, end: 0, duration: 250.ms);
   }
 }

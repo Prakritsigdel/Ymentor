@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../config/app_routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/auth/social_auth_button.dart';
@@ -118,14 +119,23 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (_) => auth.isAdmin
-              ? const AdminDashboardScreen()
-              : RootShell(initialIndex: auth.isMentor ? 4 : 0),
-        ),
-        (route) => false,
-      );
+      if (auth.isAdmin) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute<void>(builder: (_) => const AdminDashboardScreen()),
+          (route) => false,
+        );
+      } else {
+        if (auth.isMentor) {
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute<void>(
+                builder: (_) => const RootShell(initialIndex: 4)),
+            (route) => false,
+          );
+        } else {
+          Navigator.of(context, rootNavigator: true)
+              .pushNamedAndRemoveUntil(AppRoutes.rootShell, (route) => false);
+        }
+      }
     }
   }
 

@@ -87,12 +87,14 @@ class ApiService {
 
   static Future<http.Response> _sendMultipart(
     http.MultipartRequest request,
-  ) =>
-      _send(request.url, request);
+  ) {
+    request.headers.addAll(_buildHeaders(isMultipart: true));
+    return _send(request.url, request);
+  }
 
-  static Map<String, String> _headers([bool isJson = true]) {
+  static Map<String, String> _buildHeaders({bool isMultipart = false}) {
     final map = <String, String>{};
-    if (isJson) map['Content-Type'] = 'application/json';
+    if (!isMultipart) map['Content-Type'] = 'application/json';
     if (authToken != null && authToken!.isNotEmpty) {
       map['Authorization'] = 'Bearer $authToken';
     }
@@ -196,7 +198,7 @@ class ApiService {
     return _guard(() async {
       final res = await _post(
         _base.replace(path: '/api/auth/register'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'name': name,
           'email': email,
@@ -222,7 +224,7 @@ class ApiService {
     return _guard(() async {
       final res = await _post(
         _base.replace(path: '/api/auth/login'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({'email': email, 'password': password}),
       );
       final data = _decode(res);
@@ -237,7 +239,7 @@ class ApiService {
     return _guard(() async {
       final res = await _get(
         _base.replace(path: '/api/auth/me'),
-        headers: _headers(),
+        headers: _buildHeaders(),
       );
       final data = _decode(res);
       final userMap =
@@ -258,7 +260,7 @@ class ApiService {
     return _guard(() async {
       final res = await _put(
         _base.replace(path: '/api/users/onboarding'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'faculty': faculty,
           'skillsOrInterests': skillsOrInterests,
@@ -288,7 +290,7 @@ class ApiService {
     return _guard(() async {
       final response = await _put(
         _base.replace(path: '/api/users/onboarding/mentee'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'academicStatus': academicStatus,
           'fieldOfInterest': fieldOfInterest,
@@ -315,9 +317,6 @@ class ApiService {
         'POST',
         _base.replace(path: '/api/auth/onboard/mentor'),
       );
-      if (authToken != null && authToken!.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $authToken';
-      }
       request.fields.addAll(fields);
       for (final entry in files.entries) {
         request.files.add(
@@ -343,7 +342,7 @@ class ApiService {
     return _guard(() async {
       final res = await _put(
         _base.replace(path: '/api/users/profile'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           if (name != null) 'name': name,
           if (bio != null) 'bio': bio,
@@ -372,7 +371,7 @@ class ApiService {
     return _guard(() async {
       final response = await _patch(
         _base.replace(path: '/api/v1/mentors/profile'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'hourlyRateNPR': hourlyRateNpr,
           'monthlyRateNPR': monthlyRateNpr,
@@ -400,7 +399,7 @@ class ApiService {
       final uri = _base.replace(
           path: '/api/users/mentors',
           queryParameters: params.isEmpty ? null : params);
-      final res = await _get(uri, headers: _headers());
+      final res = await _get(uri, headers: _buildHeaders());
       return _decodeList(res)
           .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -412,7 +411,7 @@ class ApiService {
       final uri = _base.replace(
           path: '/api/mentors/leaderboard',
           queryParameters: {'limit': '$limit'});
-      final res = await _get(uri, headers: _headers());
+      final res = await _get(uri, headers: _buildHeaders());
       return _decodeList(res)
           .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -422,7 +421,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getMentorProfile(String mentorId) async {
     return _guard(() async {
       final res = await _get(_base.replace(path: '/api/mentors/$mentorId'),
-          headers: _headers());
+          headers: _buildHeaders());
       return _decode(res);
     });
   }
@@ -435,7 +434,7 @@ class ApiService {
     return _guard(() async {
       final res = await _patch(
         _base.replace(path: '/api/mentors/$mentorId/config'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           if (pricingTiers != null) 'pricingTiers': pricingTiers.toJson(),
           if (meetingUrl != null) 'meetingUrl': meetingUrl,
@@ -452,17 +451,22 @@ class ApiService {
     required String mentorId,
     required int durationMinutes,
     required double price,
+    double? basePrice,
+    double? durationInHours,
     DateTime? scheduledTime,
   }) async {
     return _guard(() async {
+      final actualPrice = basePrice ?? price;
       final res = await _post(
         _base.replace(path: '/api/bookings/checkout'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'menteeId': menteeId,
           'mentorId': mentorId,
           'durationMinutes': durationMinutes,
-          'price': price,
+          'durationInHours': durationInHours ?? (durationMinutes / 60.0),
+          'basePrice': actualPrice,
+          'price': actualPrice,
           'scheduledTime':
               (scheduledTime ?? DateTime.now().add(const Duration(days: 1)))
                   .toIso8601String(),
@@ -476,7 +480,7 @@ class ApiService {
     return _guard(() async {
       final response = await _post(
         _base.replace(path: '/api/bookings/monthly'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({'mentorId': mentorId}),
       );
       return _decode(response);
@@ -504,7 +508,7 @@ class ApiService {
           queryParameters:
               after == null ? null : {'after': after.toUtc().toIso8601String()},
         ),
-        headers: _headers(),
+        headers: _buildHeaders(),
       );
       return _decodeList(response);
     });
@@ -517,10 +521,8 @@ class ApiService {
     String sessionType = 'MONTHLY',
   }) async {
     return _guard(() async {
-      final request =
-          http.MultipartRequest('POST', _base.replace(path: '/api/v1/chat/send'));
-      if (authToken != null && authToken!.isNotEmpty)
-        request.headers['Authorization'] = 'Bearer $authToken';
+      final request = http.MultipartRequest(
+          'POST', _base.replace(path: '/api/v1/chat/send'));
       request.fields['conversationId'] = conversationId;
       request.fields['text'] = text;
       request.fields['sessionType'] = sessionType;
@@ -533,14 +535,14 @@ class ApiService {
   static Future<dynamic> adminGet(String path) async {
     return _guard(() async => _decode(await _get(
         _base.replace(path: '/api/admin/$path'),
-        headers: _headers())));
+        headers: _buildHeaders())));
   }
 
   static Future<dynamic> adminPut(
       String path, Map<String, dynamic> body) async {
     return _guard(() async => _decode(await _put(
           _base.replace(path: '/api/admin/$path'),
-          headers: _headers(),
+          headers: _buildHeaders(),
           body: jsonEncode(body),
         )));
   }
@@ -549,7 +551,7 @@ class ApiService {
       String path, Map<String, dynamic> body) async {
     return _guard(() async => _decode(await _post(
           _base.replace(path: '/api/admin/$path'),
-          headers: _headers(),
+          headers: _buildHeaders(),
           body: jsonEncode(body),
         )));
   }
@@ -562,7 +564,7 @@ class ApiService {
     return _guard(() async {
       final res = await _put(
         _base.replace(path: '/api/bookings/$bookingId/complete'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({'rating': rating, 'reviewNote': reviewNote}),
       );
       return _decode(res);
@@ -573,11 +575,21 @@ class ApiService {
     return _guard(() async {
       final res = await _get(
         _base.replace(path: '/api/bookings/user/$userId'),
-        headers: _headers(),
+        headers: _buildHeaders(),
       );
       return _decodeList(res)
           .map((e) => Booking.fromJson(e as Map<String, dynamic>))
           .toList();
+    });
+  }
+
+  static Future<Map<String, dynamic>> getRtcToken(String sessionId) async {
+    return _guard(() async {
+      final res = await _post(
+        _base.replace(path: '/api/v1/bookings/$sessionId/rtc-token'),
+        headers: _buildHeaders(),
+      );
+      return _decode(res);
     });
   }
 
@@ -587,7 +599,7 @@ class ApiService {
     return _guard(() async {
       final res = await _get(
         _base.replace(path: '/api/workspaces/user/$userId'),
-        headers: _headers(),
+        headers: _buildHeaders(),
       );
       return _decodeList(res)
           .map((e) => Workspace.fromJson(e as Map<String, dynamic>))
@@ -599,7 +611,7 @@ class ApiService {
     return _guard(() async {
       final res = await _get(
         _base.replace(path: '/api/workspaces/$workspaceId/notes'),
-        headers: _headers(),
+        headers: _buildHeaders(),
       );
       return _decodeList(res)
           .map((e) => Note.fromJson(e as Map<String, dynamic>))
@@ -618,9 +630,6 @@ class ApiService {
     return _guard(() async {
       final uri = _base.replace(path: '/api/workspaces/$workspaceId/notes');
       final request = http.MultipartRequest('POST', uri);
-      if (authToken != null && authToken!.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $authToken';
-      }
       request.fields['title'] = title;
       request.fields['uploadedBy'] = uploadedBy;
       if (description != null) request.fields['description'] = description;
@@ -643,7 +652,7 @@ class ApiService {
     return _guard(() async {
       final res = await _post(
         _base.replace(path: '/api/workspaces/notes/$noteId/comments'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: jsonEncode({
           'senderId': senderId,
           'senderName': senderName,
@@ -658,7 +667,7 @@ class ApiService {
     return _guard(() async {
       final res = await _patch(
         _base.replace(path: '/api/workspaces/notes/$noteId/toggle'),
-        headers: _headers(),
+        headers: _buildHeaders(),
       );
       return Note.fromJson(_decode(res));
     });
@@ -669,7 +678,7 @@ class ApiService {
   static Future<List<AppUser>> getPendingMentors() async {
     return _guard(() async {
       final res = await _get(_base.replace(path: '/api/admin/pending-mentors'),
-          headers: _headers());
+          headers: _buildHeaders());
       return _decodeList(res)
           .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -680,7 +689,7 @@ class ApiService {
     return _guard(() async {
       final res = await _put(
           _base.replace(path: '/api/admin/approve-mentor/$mentorId'),
-          headers: _headers());
+          headers: _buildHeaders());
       final data = _decode(res);
       final userMap =
           data['user'] is Map ? data['user'] as Map<String, dynamic> : data;
@@ -693,7 +702,7 @@ class ApiService {
     return _guard(() async {
       final res = await _put(
         _base.replace(path: '/api/admin/toggle-user-status/$userId'),
-        headers: _headers(),
+        headers: _buildHeaders(),
         body: status != null ? jsonEncode({'status': status}) : null,
       );
       final data = _decode(res);
@@ -707,7 +716,7 @@ class ApiService {
     return _guard(() async {
       final res = await _get(
           _base.replace(path: '/api/admin/escrow-transactions'),
-          headers: _headers());
+          headers: _buildHeaders());
       return _decode(res);
     });
   }
@@ -717,7 +726,7 @@ class ApiService {
     return _guard(() async {
       final res = await _put(
           _base.replace(path: '/api/admin/release-escrow/$bookingId'),
-          headers: _headers());
+          headers: _buildHeaders());
       return _decode(res);
     });
   }
@@ -725,7 +734,7 @@ class ApiService {
   static Future<List<dynamic>> getAuditLogs() async {
     return _guard(() async {
       final res = await _get(_base.replace(path: '/api/admin/audit-logs'),
-          headers: _headers());
+          headers: _buildHeaders());
       return _decodeList(res);
     });
   }
@@ -733,7 +742,7 @@ class ApiService {
   static Future<List<AppUser>> getAllUsers() async {
     return _guard(() async {
       final res = await _get(_base.replace(path: '/api/admin/users'),
-          headers: _headers());
+          headers: _buildHeaders());
       return _decodeList(res)
           .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
           .toList();

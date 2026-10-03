@@ -7,11 +7,26 @@ allprojects {
 
 rootProject.buildDir = "../build"
 
+ext {
+    compileSdkVersion = 36
+    targetSdkVersion = 35
+    minSdkVersion = 21
+}
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+// Keep third-party Android plugins on the same compile API as the app.
+subprojects {
+    plugins.withId("com.android.library") {
+        android {
+            compileSdk 36
+        }
+    }
 }
 
 tasks.register("clean", Delete) {

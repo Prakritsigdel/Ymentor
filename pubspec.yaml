@@ -21,6 +21,8 @@ dependencies:
   flutter_animate: ^4.5.0
   skeletonizer: ^1.4.0
   iconsax_plus: ^1.0.0
+  agora_rtc_engine: ^6.6.4
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:

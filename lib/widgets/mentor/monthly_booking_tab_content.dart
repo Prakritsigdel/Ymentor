@@ -42,7 +42,7 @@ class MonthlyBookingTabContent extends StatelessWidget {
           Chip(
             avatar: const Icon(Icons.circle, color: AppColors.mint, size: 12),
             label: Text(capacity),
-            backgroundColor: AppColors.surface,
+            backgroundColor: Theme.of(context).colorScheme.surface,
           ),
           const SizedBox(height: 16),
           const _MonthlyFeature(
@@ -80,7 +80,7 @@ class _MonthlyFeature extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         child: ListTile(
           leading: Icon(icon, color: AppColors.mint),
           title: Text(text),

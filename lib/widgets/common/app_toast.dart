@@ -41,12 +41,14 @@ class AppToast {
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.5)),
+          side:
+              BorderSide(color: AppColors.primaryAccent.withValues(alpha: 0.5)),
         ),
         backgroundColor: AppColors.surface,
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline_rounded, color: AppColors.primaryAccent),
+            const Icon(Icons.check_circle_outline_rounded,
+                color: AppColors.primaryAccent),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

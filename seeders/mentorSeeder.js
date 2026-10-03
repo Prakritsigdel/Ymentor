@@ -19,6 +19,11 @@ async function seedMentor() {
           status: 'active',
           hourlyRate: hourly,
           pricing: { hourly, monthly },
+          pricingTiers: {
+            tier30m: Math.round(hourly * 0.5),
+            tier60m: hourly,
+            tier120m: Math.round(hourly * 1.8),
+          },
           walletBalance: 5000,
           'wallet.balance': 5000,
           'mentorProfile.monthlyRate': monthly,
