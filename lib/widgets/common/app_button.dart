@@ -53,11 +53,17 @@ class _AppButtonState extends State<AppButton> {
       case AppButtonVariant.primary:
         return (scheme.primary, scheme.onPrimary, null);
       case AppButtonVariant.secondary:
-        return (scheme.surface, scheme.onSurface,
-            Border.all(color: scheme.outline));
+        return (
+          scheme.surface,
+          scheme.onSurface,
+          Border.all(color: scheme.outline)
+        );
       case AppButtonVariant.outlined:
-        return (Colors.transparent, AppColors.primary,
-            Border.all(color: AppColors.primary, width: 1.5));
+        return (
+          Colors.transparent,
+          AppColors.primary,
+          Border.all(color: AppColors.primary, width: 1.5)
+        );
       case AppButtonVariant.ghost:
         return (Colors.transparent, AppColors.textSecondary, null);
       case AppButtonVariant.danger:
@@ -78,9 +84,12 @@ class _AppButtonState extends State<AppButton> {
 
   double get _fontSize {
     switch (widget.size) {
-      case AppButtonSize.sm: return 12;
-      case AppButtonSize.md: return 14;
-      case AppButtonSize.lg: return 16;
+      case AppButtonSize.sm:
+        return 12;
+      case AppButtonSize.md:
+        return 14;
+      case AppButtonSize.lg:
+        return 16;
     }
   }
 
@@ -112,7 +121,8 @@ class _AppButtonState extends State<AppButton> {
               boxShadow: null,
             ),
             child: Row(
-              mainAxisSize: widget.isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisSize:
+                  widget.isFullWidth ? MainAxisSize.max : MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (widget.isLoading) ...[

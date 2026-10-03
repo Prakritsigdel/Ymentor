@@ -13,6 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 // Load Mongoose Models
 const User = require('./models/User');
@@ -32,6 +33,7 @@ const createMentorsRouter = require('./server/routes/mentors');
 const createBookingsRouter = require('./server/routes/bookings');
 const createChatRouter = require('./server/routes/chat');
 const createAdminRouter = require('./server/routes/admin');
+const createAgoraRouter = require('./server/routes/agora');
 const { splitEscrow } = require('./services/escrowService');
 
 const app = express();
@@ -63,6 +65,16 @@ const WIFI_HOST = process.env.WIFI_HOST || (() => {
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ymentor';
 const ADMIN_EMAIL = process.env.YMENTOR_ADMIN_EMAIL?.trim().toLowerCase();
 const ADMIN_PASSWORD = process.env.YMENTOR_ADMIN_PASSWORD;
+
+function isValidMeetingUrl(value) {
+  try {
+    const url = new URL(String(value));
+    return ['http:', 'https:'].includes(url.protocol) &&
+      Boolean(url.hostname);
+  } catch (_) {
+    return false;
+  }
+}
 
 if (Boolean(ADMIN_EMAIL) !== Boolean(ADMIN_PASSWORD)) {
   throw new Error('Set both YMENTOR_ADMIN_EMAIL and YMENTOR_ADMIN_PASSWORD to provision an administrator.');
@@ -117,7 +129,7 @@ global.ymentorMemoryStore = {
   messages: [],
   disputes: [],
   reviews: [],
-  config: { flatFee: 4, percentageFee: 0, broadcasts: [] },
+  config: { broadcasts: [] },
 };
 
 app.use('/api', createAuthRouter({ verifyAuth, uploadsDir }));
@@ -126,6 +138,10 @@ app.use('/api', createBookingsRouter({ verifyAuth }));
 app.use('/api/chat', createChatRouter({ verifyAuth, uploadsDir }));
 app.use('/api/v1/chat', createChatRouter({ verifyAuth, uploadsDir }));
 app.use('/api/admin', createAdminRouter({ verifyAuth, verifyRole, logAudit }));
+app.use('/api/v1/agora', createAgoraRouter());
+app.use('/api/agora', createAgoraRouter());
+
+// ── Legacy Agora token endpoint fallback (GET /api/v1/agora/token) ─────────────
 
 // Calculate Leaderboard score formula helper
 function computeScore(ratingAvg, totalSessions) {
@@ -192,12 +208,12 @@ async function autoSeedBaselineAccounts() {
         skills: ['AI', 'Python'],
       },
       pricingTiers: { tier30m: 1000, tier60m: 2000, tier120m: 3600 },
-      meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      meetingUrl: '',
       ratingAvg: 5.0,
       totalSessions: 2,
       leaderboardScore: computeScore(5.0, 2),
-      wallet: { balance: 1000, pendingEscrow: 0 },
-      walletBalance: 1000,
+      wallet: { balance: 40000, pendingEscrow: 0 },
+      walletBalance: 40000,
       isIdentityVerified: true,
       isSkillVerified: false,
       menteeProfile: { preferredMode: 'both', targetSkills: ['AI', 'Python'] },
@@ -257,6 +273,11 @@ async function autoSeedBaselineAccounts() {
           $set: {
             hourlyRate: hourly,
             pricing: { hourly, monthly },
+            pricingTiers: {
+              tier30m: Math.round(hourly * 0.5),
+              tier60m: hourly,
+              tier120m: Math.round(hourly * 1.8),
+            },
             'mentorProfile.monthlyRate': monthly,
           },
         },
@@ -322,18 +343,21 @@ async function autoSeedBaselineAccounts() {
 
       let booking = await Booking.findOne({ mentorId: mentor._id, menteeId: mentee._id });
       if (!booking) {
+        const durationMinutes = 60;
+        const grossAmount = Math.round(Number(mentor.hourlyRate) * durationMinutes / 60);
+        const split = splitEscrow(grossAmount);
         await Booking.create({
           menteeId: mentee._id,
           mentorId: mentor._id,
-          durationMinutes: 60,
+          durationMinutes,
           scheduledTime: new Date(Date.now() + 3600000 * 24),
           meetingUrl: mentor.meetingUrl,
-          platformFee: 400,
+          platformFee: split.platformFee,
           escrowStatus: 'held_in_escrow',
           financials: {
-            grossAmount: 1500,
-            platformCommission20Percent: 300,
-            mentorNetPayout80Percent: 1200,
+            grossAmount,
+            platformCommission20Percent: split.platformFee,
+            mentorNetPayout80Percent: split.mentorPayout,
             escrowStatus: 'held_in_escrow',
           },
           status: 'CONFIRMED',
@@ -391,19 +415,23 @@ async function autoSeedBaselineAccounts() {
       };
       global.ymentorMemoryStore.notes.push(note);
 
+      const durationMinutes = 60;
+      const mentorSeed = seedUsers.find((user) => user.role === 'mentor');
+      const grossAmount = Math.round(Number(mentorSeed.hourlyRate) * durationMinutes / 60);
+      const split = splitEscrow(grossAmount);
       const booking = {
         _id: 'booking-seed-1',
         menteeId: 'user-mentee-seed',
         mentorId: 'user-mentor-seed',
-        durationMinutes: 60,
+        durationMinutes,
         scheduledTime: new Date(Date.now() + 3600000 * 24),
         meetingUrl: 'https://meet.google.com/ymentor-alex-mentor',
-        platformFee: 400,
+        platformFee: split.platformFee,
         escrowStatus: 'held_in_escrow',
         financials: {
-          grossAmount: 1500,
-          platformCommission20Percent: 300,
-          mentorNetPayout80Percent: 1200,
+          grossAmount,
+          platformCommission20Percent: split.platformFee,
+          mentorNetPayout80Percent: split.mentorPayout,
           escrowStatus: 'held_in_escrow',
         },
         status: 'CONFIRMED',
@@ -512,10 +540,10 @@ app.post('/api/auth/register', async (req, res) => {
           tier120m: Math.round(Number(hourlyRate) * 1.8),
         },
         wallet: {
-          balance: normalizedRole === 'mentee' ? 1000 : 0,
+          balance: normalizedRole === 'mentee' ? 40000 : 0,
           pendingEscrow: 0,
         },
-        walletBalance: normalizedRole === 'mentee' ? 1000 : 0,
+        walletBalance: normalizedRole === 'mentee' ? 40000 : 0,
       });
 
       newUser.calculateLeaderboardScore();
@@ -563,11 +591,11 @@ app.post('/api/auth/register', async (req, res) => {
           tier120m: Math.round(Number(hourlyRate) * 1.8),
         },
         wallet: {
-          balance: normalizedRole === 'mentee' ? 1000 : 0,
+          balance: normalizedRole === 'mentee' ? 40000 : 0,
           pendingEscrow: 0,
         },
-        walletBalance: normalizedRole === 'mentee' ? 1000 : 0,
-        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+        walletBalance: normalizedRole === 'mentee' ? 40000 : 0,
+        meetingUrl: '',
         ratingAvg: 5.0,
         totalSessions: 0,
         leaderboardScore: computeScore(5.0, 0),
@@ -782,7 +810,12 @@ app.put('/api/users/profile', verifyAuth, async (req, res) => {
         user.mentorProfile.maxMentees = parsedCapacity;
       }
       if (pricingTiers) user.pricingTiers = pricingTiers;
-      if (meetingUrl !== undefined) user.meetingUrl = meetingUrl;
+      if (meetingUrl !== undefined) {
+        if (!isValidMeetingUrl(meetingUrl)) {
+          return res.status(400).json({ error: 'Enter a valid video meeting URL.' });
+        }
+        user.meetingUrl = meetingUrl.trim();
+      }
 
       await user.save();
 
@@ -825,7 +858,12 @@ app.put('/api/users/profile', verifyAuth, async (req, res) => {
         user.mentorProfile.maxMentees = parsedCapacity;
       }
       if (pricingTiers) user.pricingTiers = pricingTiers;
-      if (meetingUrl !== undefined) user.meetingUrl = meetingUrl;
+      if (meetingUrl !== undefined) {
+        if (!isValidMeetingUrl(meetingUrl)) {
+          return res.status(400).json({ error: 'Enter a valid video meeting URL.' });
+        }
+        user.meetingUrl = meetingUrl.trim();
+      }
 
       await logAudit({
         actorId: user._id,
@@ -1097,30 +1135,31 @@ app.patch('/api/mentors/:id/config', verifyAuth, async (req, res) => {
    4. BOOKINGS & ESCROW WORKFLOW (/api/bookings)
    ========================================================================= */
 
-// POST /api/bookings/checkout
-app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (req, res) => {
+// POST /api/bookings/checkout and POST /api/v1/bookings
+const handleBookingCheckout = async (req, res) => {
   try {
-    const { menteeId, mentorId, durationMinutes, price, scheduledTime } = req.body;
+    const menteeId = req.body.menteeId;
+    const mentorId = req.body.mentorId;
+    const durationMinutes = Number(req.body.durationMinutes ?? (Number(req.body.durationInHours) * 60));
+    const price = req.body.basePrice !== undefined ? req.body.basePrice : req.body.price;
 
-    if (!menteeId || !mentorId || !durationMinutes || !price) {
-      return res.status(400).json({ error: 'menteeId, mentorId, durationMinutes, and price are required.' });
+    if (!menteeId || !mentorId || !durationMinutes || price === undefined) {
+      return res.status(400).json({ error: 'menteeId, mentorId, durationMinutes/durationInHours, and price/basePrice are required.' });
     }
     if (String(req.user._id || req.user.id) !== String(menteeId)) {
       return res.status(403).json({ error: 'You can only book a session for your own account.' });
     }
 
-    const numPrice = Number(price);
+    const numPrice = Math.round(Number(price));
     if (![30, 60, 120, 180].includes(Number(durationMinutes)) ||
-        !Number.isSafeInteger(numPrice) || numPrice <= 0) {
+        !Number.isFinite(numPrice) || numPrice <= 0) {
       return res.status(400).json({ error: 'Select a valid session duration and whole NPR price.' });
     }
-    const appointmentAt = new Date(scheduledTime || Date.now() + 86400000);
+    const sessionTime = req.body.scheduledTime || req.body.selectedTimeSlot || req.body.startTime || new Date(Date.now() + 86400000).toISOString();
+    let appointmentAt = new Date(sessionTime);
     if (!Number.isFinite(appointmentAt.getTime()) || appointmentAt.getTime() <= Date.now()) {
-      return res.status(400).json({ error: 'Select a future session time.' });
+      appointmentAt = new Date(Date.now() + 86400000);
     }
-    const platformConfig = isMongoConnected
-      ? await PlatformConfig.findOne({ key: 'default' })
-      : global.ymentorMemoryStore.config;
     const split = splitEscrow(numPrice);
     const platformFee = split.platformFee;
     const mentorNetPayout80Percent = split.mentorPayout;
@@ -1132,12 +1171,8 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
       if (!mentee || !mentor) {
         return res.status(404).json({ error: 'Mentee or Mentor not found.' });
       }
-      const expectedPrice = Number(durationMinutes) === 30
-        ? Number(mentor.pricingTiers?.tier30m ?? mentor.hourlyRate * 0.5)
-        : Number(durationMinutes) === 120
-            ? Number(mentor.pricingTiers?.tier120m ?? mentor.hourlyRate * 1.8)
-            : Math.round(mentor.hourlyRate * Number(durationMinutes) / 60);
-      if (mentor.role !== 'mentor' || mentor.status !== 'active' || expectedPrice !== numPrice) {
+      const expectedPrice = Math.round(Number(mentor.hourlyRate) * Number(durationMinutes) / 60);
+      if (mentor.role !== 'mentor' || mentor.status !== 'active' || Math.abs(expectedPrice - numPrice) > 1) {
         return res.status(400).json({ error: 'The mentor is unavailable or the submitted price does not match the selected session.' });
       }
 
@@ -1164,8 +1199,10 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
         mentorId,
         durationMinutes: parseInt(durationMinutes),
         scheduledTime: appointmentAt,
-        meetingUrl: mentor.meetingUrl || 'https://meet.google.com/abc-defg-hij',
+        meetingUrl: mentor.meetingUrl || '',
         platformFee,
+        totalAmount: numPrice,
+        mentorNetPayout: mentorNetPayout80Percent,
         escrowStatus: 'held_in_escrow',
         financials: {
           grossAmount: numPrice,
@@ -1222,12 +1259,8 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
       if (!mentee || !mentor) {
         return res.status(404).json({ error: 'Mentee or Mentor not found.' });
       }
-      const expectedPrice = Number(durationMinutes) === 30
-        ? Number(mentor.pricingTiers?.tier30m ?? mentor.hourlyRate * 0.5)
-        : Number(durationMinutes) === 120
-            ? Number(mentor.pricingTiers?.tier120m ?? mentor.hourlyRate * 1.8)
-            : Math.round(mentor.hourlyRate * Number(durationMinutes) / 60);
-      if (mentor.role !== 'mentor' || mentor.status !== 'active' || expectedPrice !== numPrice) {
+      const expectedPrice = Math.round(Number(mentor.hourlyRate) * Number(durationMinutes) / 60);
+      if (mentor.role !== 'mentor' || mentor.status !== 'active' || Math.abs(expectedPrice - numPrice) > 1) {
         return res.status(400).json({ error: 'The mentor is unavailable or the submitted price does not match the selected session.' });
       }
 
@@ -1251,8 +1284,10 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
         mentorId,
         durationMinutes: parseInt(durationMinutes),
         scheduledTime: appointmentAt,
-        meetingUrl: mentor.meetingUrl || 'https://meet.google.com/abc-defg-hij',
+        meetingUrl: mentor.meetingUrl || '',
         platformFee,
+        totalAmount: numPrice,
+        mentorNetPayout: mentorNetPayout80Percent,
         escrowStatus: 'held_in_escrow',
         financials: {
           grossAmount: numPrice,
@@ -1309,7 +1344,10 @@ app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), async (re
     console.error('Checkout error:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+app.post('/api/bookings/checkout', verifyAuth, verifyRole(['mentee']), handleBookingCheckout);
+app.post('/api/v1/bookings', verifyAuth, verifyRole(['mentee']), handleBookingCheckout);
 
 // PUT /api/bookings/:id/complete: release escrow funds (80%)
 app.put('/api/bookings/:id/complete', verifyAuth, verifyRole(['mentee']), async (req, res) => {
@@ -1345,7 +1383,7 @@ app.put('/api/bookings/:id/complete', verifyAuth, verifyRole(['mentee']), async 
 
       const mentor = await User.findById(booking.mentorId);
       if (mentor) {
-        const payout = booking.financials?.mentorNetPayout80Percent || 16.0;
+        const payout = Number(booking.financials?.mentorNetPayout80Percent || 0);
         mentor.walletBalance = parseFloat(((mentor.walletBalance || 0) + payout).toFixed(2));
         if (mentor.wallet) {
           mentor.wallet.balance = mentor.walletBalance;
@@ -1410,7 +1448,7 @@ app.put('/api/bookings/:id/complete', verifyAuth, verifyRole(['mentee']), async 
 
       const mentor = global.ymentorMemoryStore.users.find((u) => u._id === booking.mentorId || u.id === booking.mentorId);
       if (mentor) {
-        const payout = booking.financials?.mentorNetPayout80Percent || 16.0;
+        const payout = Number(booking.financials?.mentorNetPayout80Percent || 0);
         mentor.walletBalance = parseFloat(((mentor.walletBalance || 0) + payout).toFixed(2));
         if (mentor.wallet) {
           mentor.wallet.balance = mentor.walletBalance;
@@ -1461,7 +1499,7 @@ app.get('/api/bookings/user/:userId', verifyAuth, async (req, res) => {
         $or: [{ menteeId: userId }, { mentorId: userId }],
       })
         .populate('menteeId', 'name email avatarUrl')
-        .populate('mentorId', 'name email avatarUrl headline')
+        .populate('mentorId', 'name email avatarUrl headline hourlyRate pricing pricingTiers')
         .sort({ scheduledTime: -1 });
       return res.json(bookings);
     } else {
@@ -1825,8 +1863,8 @@ app.get('/api/admin/escrow-transactions', verifyAuth, verifyRole(['admin']), asy
       const totals = bookings.reduce(
         (acc, b) => {
           const gross = b.financials?.grossAmount || 0;
-          const fee = b.platformFee || b.financials?.platformCommission20Percent || 400;
-          const net = b.financials?.mentorNetPayout80Percent || gross - fee;
+          const fee = Number(b.platformFee ?? b.financials?.platformCommission20Percent ?? Math.round(gross * 0.2));
+          const net = Number(b.financials?.mentorNetPayout80Percent ?? Math.round(gross * 0.8));
           acc.totalGross += gross;
           acc.totalPlatformFees += fee;
           if (b.escrowStatus === 'held_in_escrow' || b.financials?.escrowStatus === 'held_in_escrow') {
@@ -1854,8 +1892,8 @@ app.get('/api/admin/escrow-transactions', verifyAuth, verifyRole(['admin']), asy
       const totals = bookings.reduce(
         (acc, b) => {
           const gross = b.financials?.grossAmount || 0;
-          const fee = b.platformFee || b.financials?.platformCommission20Percent || 400;
-          const net = b.financials?.mentorNetPayout80Percent || gross - fee;
+          const fee = Number(b.platformFee ?? b.financials?.platformCommission20Percent ?? Math.round(gross * 0.2));
+          const net = Number(b.financials?.mentorNetPayout80Percent ?? Math.round(gross * 0.8));
           acc.totalGross += gross;
           acc.totalPlatformFees += fee;
           if (b.escrowStatus === 'held_in_escrow') {
@@ -1895,7 +1933,7 @@ app.put('/api/admin/release-escrow/:bookingId', verifyAuth, verifyRole(['admin']
 
       const mentor = await User.findById(booking.mentorId);
       if (mentor) {
-        const payout = booking.financials?.mentorNetPayout80Percent || 16.0;
+        const payout = Number(booking.financials?.mentorNetPayout80Percent || 0);
         mentor.walletBalance = parseFloat(((mentor.walletBalance || 0) + payout).toFixed(2));
         if (mentor.wallet) {
           mentor.wallet.balance = mentor.walletBalance;
@@ -1926,7 +1964,7 @@ app.put('/api/admin/release-escrow/:bookingId', verifyAuth, verifyRole(['admin']
 
       const mentor = global.ymentorMemoryStore.users.find((u) => u._id === booking.mentorId || u.id === booking.mentorId);
       if (mentor) {
-        const payout = booking.financials?.mentorNetPayout80Percent || 16.0;
+        const payout = Number(booking.financials?.mentorNetPayout80Percent || 0);
         mentor.walletBalance = parseFloat(((mentor.walletBalance || 0) + payout).toFixed(2));
         if (mentor.wallet) {
           mentor.wallet.balance = mentor.walletBalance;
@@ -2001,13 +2039,9 @@ app.get('/api/platform/fees', async (req, res) => {
     return res.status(400).json({ error: 'A positive amount is required.' });
   }
   try {
-    const config = isMongoConnected
-      ? await PlatformConfig.findOne({ key: 'default' })
-      : global.ymentorMemoryStore.config;
-    const fee = Number(config?.percentageFee) > 0
-      ? Number((amount * config.percentageFee / 100).toFixed(2))
-      : Number(config?.flatFee ?? 4);
-    return res.json({ fee, mentorNetPayout: Number((amount - fee).toFixed(2)) });
+    const fee = Math.round(amount * 0.2);
+    const mentorNetPayout = Math.round(amount * 0.8);
+    return res.json({ fee, mentorNetPayout, grossAmount: amount });
   } catch (error) {
     console.error('Platform fee lookup failed:', error);
     return res.status(500).json({ error: 'Unable to calculate platform fees.' });

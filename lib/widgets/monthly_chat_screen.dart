@@ -93,7 +93,7 @@ class _MonthlyChatScreenState extends State<MonthlyChatScreen> {
         conversationId: widget.conversationId,
         text: _controller.text.trim(),
         pdf: _attachment,
-        sessionType: 'MONTHLY',
+        sessionType: 'HOURLY',
       );
       if (!mounted) return;
       setState(() {
@@ -126,7 +126,7 @@ class _MonthlyChatScreenState extends State<MonthlyChatScreen> {
   Widget build(BuildContext context) {
     final userId = context.watch<AuthProvider>().user?.id;
     return Scaffold(
-      appBar: AppBar(title: const Text('Monthly mentorship chat')),
+      appBar: AppBar(title: const Text('Mentorship chat')),
       body: Column(
         children: [
           if (_error != null)

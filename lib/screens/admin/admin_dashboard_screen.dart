@@ -86,6 +86,11 @@ class AdminDashboardScreen extends StatelessWidget {
                             CurrencyUtils.formatNPR(
                                 (data['activeEscrow'] as num?) ?? 0),
                             Icons.lock_clock_outlined),
+                        _metric(
+                            context,
+                            'GMV',
+                            CurrencyUtils.formatNPR((data['gmv'] as num?) ?? 0),
+                            Icons.trending_up_outlined),
                         _metric(context, 'Open disputes',
                             data['openDisputes'] ?? 0, Icons.gavel_outlined),
                         _metric(
@@ -94,6 +99,12 @@ class AdminDashboardScreen extends StatelessWidget {
                             CurrencyUtils.formatNPR(
                                 (data['commissionRevenue'] as num?) ?? 0),
                             Icons.account_balance_outlined),
+                        _metric(
+                            context,
+                            'Released payouts',
+                            CurrencyUtils.formatNPR(
+                                (data['releasedPayouts'] as num?) ?? 0),
+                            Icons.payments_outlined),
                       ],
                     ),
                   );

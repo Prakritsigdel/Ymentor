@@ -16,7 +16,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   void dispose() {
-    _current.dispose(); _next.dispose(); _confirm.dispose(); super.dispose();
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
   }
 
   @override
@@ -38,12 +41,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   if (!(_formKey.currentState?.validate() ?? false)) return;
                   if (_next.text != _confirm.text) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('New passwords do not match.')),
+                      const SnackBar(
+                          content: Text('New passwords do not match.')),
                     );
                     return;
                   }
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password update is ready for account verification.')),
+                    const SnackBar(
+                        content: Text(
+                            'Password update is ready for account verification.')),
                   );
                 },
                 child: const Text('Update Password'),
@@ -60,9 +66,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         decoration: InputDecoration(
           labelText: label,
           suffixIcon: IconButton(
-            icon: Icon(_visible.contains(index) ? Icons.visibility_off : Icons.visibility),
+            icon: Icon(_visible.contains(index)
+                ? Icons.visibility_off
+                : Icons.visibility),
             onPressed: () => setState(() {
-              _visible.contains(index) ? _visible.remove(index) : _visible.add(index);
+              _visible.contains(index)
+                  ? _visible.remove(index)
+                  : _visible.add(index);
             }),
           ),
         ),

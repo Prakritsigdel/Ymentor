@@ -74,8 +74,10 @@ class BrandFooter extends StatelessWidget {
                 iconColor: AppColors.mint,
                 collapsedIconColor: AppColors.textSecondary,
                 title: Text(faq.$1,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,

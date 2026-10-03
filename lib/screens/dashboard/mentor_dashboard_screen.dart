@@ -145,6 +145,16 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
   Future<void> _saveConfig() async {
     final user = context.read<AuthProvider>().user;
     if (user == null) return;
+    final meetingUrl = Uri.tryParse(_meetingUrlCtrl.text.trim());
+    if (meetingUrl == null ||
+        !meetingUrl.hasScheme ||
+        !['http', 'https'].contains(meetingUrl.scheme) ||
+        meetingUrl.host.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid video meeting URL.')),
+      );
+      return;
+    }
 
     setState(() => _savingConfig = true);
     try {
@@ -152,7 +162,7 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
         hourlyRateNpr: double.tryParse(_hourlyRateCtrl.text) ?? user.hourlyRate,
         monthlyRateNpr: double.tryParse(_monthlyRateCtrl.text) ??
             ((user.mentorProfile['monthlyRate'] as num?)?.toDouble() ?? 0),
-        meetingUrl: _meetingUrlCtrl.text.trim(),
+        meetingUrl: meetingUrl.toString(),
       );
 
       await context.read<AuthProvider>().refreshUser();
@@ -312,7 +322,8 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
                         else ...[
                           DropdownButtonFormField<Workspace>(
                             initialValue: _uploadTarget,
-                            dropdownColor: AppColors.surface,
+                            dropdownColor:
+                                Theme.of(context).colorScheme.surface,
                             isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Select Student Workspace',

@@ -92,7 +92,8 @@ class MentorCard extends StatelessWidget {
                               child: Text(
                                 mentor.name.isNotEmpty ? mentor.name : 'Mentor',
                                 style: GoogleFonts.playfairDisplay(
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -133,7 +134,9 @@ class MentorCard extends StatelessWidget {
                           Text(
                             displayHeadline,
                             style: GoogleFonts.plusJakartaSans(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               fontSize: 12,
                             ),
                             maxLines: 2,

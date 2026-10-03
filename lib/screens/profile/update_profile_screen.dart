@@ -35,7 +35,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     if (user != null) {
       final nameParts = user.name.trim().split(RegExp(r'\s+'));
       _firstName.text = nameParts.isEmpty ? '' : nameParts.first;
-      _lastName.text = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+      _lastName.text =
+          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
       _email.text = user.email;
       _faculty.text = user.faculty;
       _title.text = user.title;
@@ -46,8 +47,21 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
   @override
   void dispose() {
-    for (final c in [_firstName, _lastName, _email, _phone, _address, _city, _state, _country,
-      _zip, _faculty, _title, _bio, _skill]) {
+    for (final c in [
+      _firstName,
+      _lastName,
+      _email,
+      _phone,
+      _address,
+      _city,
+      _state,
+      _country,
+      _zip,
+      _faculty,
+      _title,
+      _bio,
+      _skill
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -68,7 +82,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('ApiException: ', ''))),
+          SnackBar(
+              content: Text(e.toString().replaceFirst('ApiException: ', ''))),
         );
       }
     } finally {
@@ -79,7 +94,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   void _addSkill() {
     final value = _skill.text.trim();
     if (value.isNotEmpty && !_skills.contains(value)) {
-      setState(() { _skills.add(value); _skill.clear(); });
+      setState(() {
+        _skills.add(value);
+        _skill.clear();
+      });
     }
   }
 
@@ -93,7 +111,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             children: [
               _section('Personal information', [
                 Row(children: [
-                  Expanded(child: _field(_firstName, 'First name', required: true)),
+                  Expanded(
+                      child: _field(_firstName, 'First name', required: true)),
                   const SizedBox(width: 12),
                   Expanded(child: _field(_lastName, 'Last name')),
                 ]),
@@ -112,30 +131,39 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 _field(_title, 'Academic title'),
                 DropdownButtonFormField<String>(
                   initialValue: _competency,
-                  decoration: const InputDecoration(labelText: 'Competency level'),
+                  decoration:
+                      const InputDecoration(labelText: 'Competency level'),
                   items: ['Beginner', 'Intermediate', 'Advanced', 'Expert']
                       .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                       .toList(),
-                  onChanged: (v) => setState(() => _competency = v ?? _competency),
+                  onChanged: (v) =>
+                      setState(() => _competency = v ?? _competency),
                 ),
                 _field(_bio, 'Bio', maxLines: 4),
                 Row(children: [
-                  Expanded(child: _field(_skill, 'Add skill', onSubmitted: (_) => _addSkill())),
+                  Expanded(
+                      child: _field(_skill, 'Add skill',
+                          onSubmitted: (_) => _addSkill())),
                   const SizedBox(width: 8),
-                  IconButton(onPressed: _addSkill, icon: const Icon(Icons.add_circle)),
+                  IconButton(
+                      onPressed: _addSkill, icon: const Icon(Icons.add_circle)),
                 ]),
                 Wrap(
                   spacing: 8,
-                  children: _skills.map((s) => Chip(
-                    label: Text(s),
-                    onDeleted: () => setState(() => _skills.remove(s)),
-                  )).toList(),
+                  children: _skills
+                      .map((s) => Chip(
+                            label: Text(s),
+                            onDeleted: () => setState(() => _skills.remove(s)),
+                          ))
+                      .toList(),
                 ),
               ]),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: _saving ? null : _save,
-                child: _saving ? const CircularProgressIndicator() : const Text('Save Changes'),
+                child: _saving
+                    ? const CircularProgressIndicator()
+                    : const Text('Save Changes'),
               ),
             ],
           ),
@@ -146,23 +174,29 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         margin: const EdgeInsets.only(bottom: 18),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 14),
-            ...children.expand((w) => [w, const SizedBox(height: 12)]).toList()..removeLast(),
+            ...children.expand((w) => [w, const SizedBox(height: 12)]).toList()
+              ..removeLast(),
           ]),
         ),
       );
 
   Widget _field(TextEditingController controller, String label,
-      {bool required = false, TextInputType? keyboard, int maxLines = 1,
-      void Function(String)? onSubmitted}) =>
+          {bool required = false,
+          TextInputType? keyboard,
+          int maxLines = 1,
+          void Function(String)? onSubmitted}) =>
       TextFormField(
         controller: controller,
         keyboardType: keyboard,
         maxLines: maxLines,
         onFieldSubmitted: onSubmitted,
         decoration: InputDecoration(labelText: label),
-        validator: required ? (v) => v == null || v.trim().isEmpty ? 'Required' : null : null,
+        validator: required
+            ? (v) => v == null || v.trim().isEmpty ? 'Required' : null
+            : null,
       );
 }

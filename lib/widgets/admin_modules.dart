@@ -706,8 +706,8 @@ class _AdminSystemModuleState extends State<AdminSystemModule> {
                       decoration: const InputDecoration(
                         labelText: 'Message',
                         floatingLabelBehavior: FloatingLabelBehavior.always,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
                     ),
                     const SizedBox(height: 16),

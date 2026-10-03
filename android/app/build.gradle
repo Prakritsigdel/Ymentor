@@ -26,6 +26,8 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.ymentor.app"
+    // Agora, PDF, and current Flutter Android plugins require API 36 to
+    // compile. targetSdk remains 35 to preserve the requested runtime target.
     compileSdk 36
     ndkVersion flutter.ndkVersion
 
@@ -47,7 +49,7 @@ android {
         // INTERNET permission is declared in AndroidManifest.xml so the app
         // can reach http://localhost:3000 via `adb reverse tcp:3000 tcp:3000`.
         minSdkVersion flutter.minSdkVersion
-        targetSdk 36
+        targetSdk 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }

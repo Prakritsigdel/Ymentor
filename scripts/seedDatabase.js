@@ -69,8 +69,8 @@ const baselineUsers = [
     meetingUrl: 'https://meet.google.com/abc-defg-hij',
     ratingAvg: 5.0,
     totalSessions: 2,
-    wallet: { balance: 140.0, pendingEscrow: 0.0 },
-    walletBalance: 140.0,
+    wallet: { balance: 40000, pendingEscrow: 0.0 },
+    walletBalance: 40000,
     isIdentityVerified: true,
     isSkillVerified: false,
   },
@@ -124,6 +124,7 @@ async function run() {
     } else {
       user.hourlyRate = userData.hourlyRate || user.hourlyRate;
       user.pricing = userData.pricing || user.pricing;
+      user.pricingTiers = userData.pricingTiers || user.pricingTiers;
       user.mentorProfile = {
         ...(user.mentorProfile?.toObject?.() || user.mentorProfile || {}),
         ...(userData.mentorProfile || {}),

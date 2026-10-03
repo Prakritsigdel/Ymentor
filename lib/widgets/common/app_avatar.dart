@@ -31,10 +31,10 @@ class AppAvatar extends StatelessWidget {
   final double? fontSize;
 
   Color get _roleColor => switch (role.toLowerCase()) {
-    'admin'  => AppColors.roleAdmin,
-    'mentor' => AppColors.roleMentor,
-    _        => AppColors.roleMentee,
-  };
+        'admin' => AppColors.roleAdmin,
+        'mentor' => AppColors.roleMentor,
+        _ => AppColors.roleMentee,
+      };
 
   String get _initials {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -75,7 +75,8 @@ class AppAvatar extends StatelessWidget {
             ? Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _initialsWidget(effectiveFontSize),
+                errorBuilder: (_, __, ___) =>
+                    _initialsWidget(effectiveFontSize),
               )
             : _initialsWidget(effectiveFontSize),
       ),

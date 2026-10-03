@@ -64,7 +64,8 @@ class AppSkeleton extends StatelessWidget {
             final width = i == lines - 1 ? 180.0 : double.infinity;
             return Padding(
               padding: EdgeInsets.only(bottom: i < lines - 1 ? 8.0 : 0),
-              child: _Bone(width: width, height: lineHeight, radius: AppRadius.smAll),
+              child: _Bone(
+                  width: width, height: lineHeight, radius: AppRadius.smAll),
             );
           }),
         ),
@@ -76,7 +77,8 @@ class AppSkeleton extends StatelessWidget {
   factory AppSkeleton.avatar({double radius = 24}) {
     return AppSkeleton._(
       child: _Wrap(
-        child: _Bone(width: radius * 2, height: radius * 2, radius: AppRadius.fullAll),
+        child: _Bone(
+            width: radius * 2, height: radius * 2, radius: AppRadius.fullAll),
       ),
     );
   }
@@ -87,9 +89,17 @@ class AppSkeleton extends StatelessWidget {
       child: _Wrap(
         child: Row(
           children: [
-            Expanded(child: _Bone(width: double.infinity, height: 72, radius: AppRadius.lgAll)),
+            Expanded(
+                child: _Bone(
+                    width: double.infinity,
+                    height: 72,
+                    radius: AppRadius.lgAll)),
             const SizedBox(width: 10),
-            Expanded(child: _Bone(width: double.infinity, height: 72, radius: AppRadius.lgAll)),
+            Expanded(
+                child: _Bone(
+                    width: double.infinity,
+                    height: 72,
+                    radius: AppRadius.lgAll)),
           ],
         ),
       ),
@@ -121,7 +131,8 @@ class _Wrap extends StatelessWidget {
 
 /// Single shimmer bone shape
 class _Bone extends StatelessWidget {
-  const _Bone({required this.width, required this.height, required this.radius});
+  const _Bone(
+      {required this.width, required this.height, required this.radius});
   final double width;
   final double height;
   final BorderRadius radius;

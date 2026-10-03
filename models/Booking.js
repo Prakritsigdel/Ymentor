@@ -25,9 +25,11 @@ const BookingSchema = new mongoose.Schema(
     planEndsAt: { type: Date },
     conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatConversation' },
     scheduledTime: { type: Date, required: true },
-    meetingUrl: { type: String, default: 'https://meet.google.com/abc-defg-hij' },
+    meetingUrl: { type: String, default: '' },
     currency: { type: String, enum: ['NPR'], default: 'NPR' },
     platformFee: { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    totalAmount: { type: Number, min: 0 },
+    mentorNetPayout: { type: Number, min: 0 },
     escrowStatus: {
       type: String,
       enum: ['held_in_escrow', 'release_requested', 'released', 'refunded', 'HELD', 'RELEASED', 'REFUNDED'],
@@ -40,6 +42,12 @@ const BookingSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+BookingSchema.index({ escrowStatus: 1 });
+BookingSchema.index({ status: 1 });
+BookingSchema.index({ mentorId: 1 });
+BookingSchema.index({ menteeId: 1 });
+BookingSchema.index({ createdAt: 1 });
 
 BookingSchema.pre('save', function (next) {
   if (this.escrowStatus && (!this.financials || !this.financials.escrowStatus)) {

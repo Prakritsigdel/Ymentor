@@ -30,7 +30,7 @@ const PricingSchema = new mongoose.Schema(
 
 const WalletSchema = new mongoose.Schema(
   {
-    balance: { type: Number, default: 1000, min: 0, validate: Number.isInteger },
+    balance: { type: Number, default: 40000, min: 0, validate: Number.isInteger },
     pendingEscrow: { type: Number, default: 0, min: 0, validate: Number.isInteger },
   },
   { _id: false }
@@ -95,18 +95,18 @@ const UserSchema = new mongoose.Schema(
     hourlyRate: { type: Number, default: 2000, min: 0, validate: Number.isInteger },
     pricing: { type: PricingSchema, default: () => ({}) },
     isOnboarded: { type: Boolean, default: false },
-    wallet: { type: WalletSchema, default: () => ({ balance: 1000, pendingEscrow: 0 }) },
+    wallet: { type: WalletSchema, default: () => ({ balance: 40000, pendingEscrow: 0 }) },
     avatarUrl: { type: String, default: '' },
     headline: { type: String, default: '' },
     isIdentityVerified: { type: Boolean, default: false },
     isSkillVerified: { type: Boolean, default: false },
     qualifications: { type: QualificationsSchema, default: () => ({}) },
     pricingTiers: { type: PricingTiersSchema, default: () => ({}) },
-    meetingUrl: { type: String, default: 'https://meet.google.com/abc-defg-hij' },
+    meetingUrl: { type: String, default: '' },
     ratingAvg: { type: Number, default: 5.0 },
     totalSessions: { type: Number, default: 0 },
     leaderboardScore: { type: Number, default: 0.0 },
-    walletBalance: { type: Number, default: 1000, min: 0, validate: Number.isInteger },
+    walletBalance: { type: Number, default: 40000, min: 0, validate: Number.isInteger },
     verificationStatus: {
       type: String,
       enum: ['NOT_SUBMITTED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'],

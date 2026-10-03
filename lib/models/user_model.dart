@@ -39,24 +39,28 @@ class PricingTiers {
   final double tier60m;
   final double tier120m;
 
-  PricingTiers(
-      {this.tier30m = 0, this.tier60m = 0, this.tier120m = 0});
+  PricingTiers({this.tier30m = 0, this.tier60m = 0, this.tier120m = 0});
 
   factory PricingTiers.fromJson(
     Map<String, dynamic>? json, {
     double hourlyRate = 0,
   }) {
+    final effectiveHourly = hourlyRate >= 500 ? hourlyRate : 1000.0;
     if (json == null || json.isEmpty) {
       return PricingTiers(
-        tier30m: hourlyRate * 0.5,
-        tier60m: hourlyRate,
-        tier120m: hourlyRate * 1.8,
+        tier30m: effectiveHourly * 0.5,
+        tier60m: effectiveHourly,
+        tier120m: effectiveHourly * 1.8,
       );
     }
+    final raw30 = (json['tier30m'] as num?)?.toDouble();
+    final raw60 = (json['tier60m'] as num?)?.toDouble();
+    final raw120 = (json['tier120m'] as num?)?.toDouble();
+
     return PricingTiers(
-      tier30m: (json['tier30m'] as num?)?.toDouble() ?? hourlyRate * 0.5,
-      tier60m: (json['tier60m'] as num?)?.toDouble() ?? hourlyRate,
-      tier120m: (json['tier120m'] as num?)?.toDouble() ?? hourlyRate * 1.8,
+      tier30m: (raw30 != null && raw30 >= 200) ? raw30 : effectiveHourly * 0.5,
+      tier60m: (raw60 != null && raw60 >= 500) ? raw60 : effectiveHourly,
+      tier120m: (raw120 != null && raw120 >= 800) ? raw120 : effectiveHourly * 1.8,
     );
   }
 
@@ -66,17 +70,11 @@ class PricingTiers {
         'tier120m': tier120m,
       };
 
-  double priceFor(int minutes) {
-    switch (minutes) {
-      case 30:
-        return tier30m;
-      case 60:
-        return tier60m;
-      case 120:
-        return tier120m;
-      default:
-        return tier30m;
-    }
+  double priceFor(int minutes, [double? mentorHourlyRate]) {
+    final rate = (mentorHourlyRate != null && mentorHourlyRate >= 500)
+        ? mentorHourlyRate
+        : (tier60m >= 500 ? tier60m : 1000.0);
+    return rate * (minutes / 60.0);
   }
 }
 
@@ -162,13 +160,10 @@ class AppUser {
     final pricing = json['pricing'] is Map
         ? Map<String, dynamic>.from(json['pricing'] as Map)
         : <String, dynamic>{};
-    final questionnaireHourly =
-        (pricing['hourly'] as num?)?.toDouble();
+    final questionnaireHourly = (pricing['hourly'] as num?)?.toDouble();
     final legacyHourly = (json['hourlyRate'] as num?)?.toDouble();
-    final questionnaireMonthly =
-        (pricing['monthly'] as num?)?.toDouble();
-    final legacyMonthly =
-        (mentorProfile['monthlyRate'] as num?)?.toDouble();
+    final questionnaireMonthly = (pricing['monthly'] as num?)?.toDouble();
+    final legacyMonthly = (mentorProfile['monthlyRate'] as num?)?.toDouble();
     final resolvedHourly = questionnaireHourly ?? legacyHourly ?? 0;
     final resolvedMonthly = questionnaireMonthly ?? legacyMonthly ?? 0;
     mentorProfile['monthlyRate'] = resolvedMonthly;
@@ -199,11 +194,10 @@ class AppUser {
       isSkillVerified: json['isSkillVerified'] == true,
       qualifications: Qualifications.fromJson(
           json['qualifications'] as Map<String, dynamic>?),
-      pricingTiers:
-          PricingTiers.fromJson(
-            json['pricingTiers'] as Map<String, dynamic>?,
-            hourlyRate: resolvedHourly,
-          ),
+      pricingTiers: PricingTiers.fromJson(
+        json['pricingTiers'] as Map<String, dynamic>?,
+        hourlyRate: resolvedHourly,
+      ),
       meetingUrl: json['meetingUrl']?.toString() ?? '',
       ratingAvg: (json['ratingAvg'] as num?)?.toDouble() ?? 5.0,
       totalSessions: (json['totalSessions'] as num?)?.toInt() ?? 0,
