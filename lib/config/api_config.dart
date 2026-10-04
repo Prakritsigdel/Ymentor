@@ -28,4 +28,15 @@ class ApiConfig {
   static String get apiBaseUrl => '$baseUrl/api';
   static String get healthUrl => '$apiBaseUrl/health';
   static String get uploadsBaseUrl => '$baseUrl/uploads';
+
+  static String get wsBaseUrl {
+    final base = baseUrl;
+    if (base.startsWith('https://')) {
+      return 'wss://${base.substring(8)}';
+    }
+    if (base.startsWith('http://')) {
+      return 'ws://${base.substring(7)}';
+    }
+    return 'ws://$base';
+  }
 }

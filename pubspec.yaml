@@ -23,6 +23,7 @@ dependencies:
   iconsax_plus: ^1.0.0
   agora_rtc_engine: ^6.6.4
   permission_handler: ^13.0.2
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

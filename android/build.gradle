@@ -8,7 +8,7 @@ allprojects {
 rootProject.buildDir = "../build"
 
 ext {
-    compileSdkVersion = 36
+    compileSdkVersion = 37
     targetSdkVersion = 35
     minSdkVersion = 21
 }
@@ -16,17 +16,25 @@ ext {
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
-
-// Keep third-party Android plugins on the same compile API as the app.
-subprojects {
-    plugins.withId("com.android.library") {
-        android {
-            compileSdk 36
+subprojects { subproject ->
+    def setCompileSdk = {
+        if (subproject.hasProperty("android")) {
+            subproject.android {
+                compileSdk = 37
+            }
         }
     }
+    if (subproject.state.executed) {
+        setCompileSdk()
+    } else {
+        subproject.afterEvaluate {
+            setCompileSdk()
+        }
+    }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {

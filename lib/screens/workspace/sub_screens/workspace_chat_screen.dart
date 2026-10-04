@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../config/api_config.dart';
 import '../../../config/theme.dart';
@@ -36,17 +39,123 @@ class _WorkspaceChatScreenState extends State<WorkspaceChatScreen> {
   bool _loading = true;
   String? _error;
 
+  WebSocketChannel? _channel;
+  StreamSubscription? _socketSub;
+  Timer? _reconnectTimer;
+  bool _disposed = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _connectWebSocket();
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    _reconnectTimer?.cancel();
+    _socketSub?.cancel();
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _connectWebSocket() {
+    if (_disposed) return;
+    _socketSub?.cancel();
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
+
+    try {
+      final wsUrl = Uri.parse(
+        '${ApiConfig.wsBaseUrl}/ws/chat?channel=${Uri.encodeComponent(widget.workspaceId)}',
+      );
+      _channel = WebSocketChannel.connect(wsUrl);
+
+      _channel?.sink.add(jsonEncode({
+        'type': 'join',
+        'channel': widget.workspaceId,
+        'workspaceId': widget.workspaceId,
+      }));
+
+      _socketSub = _channel!.stream.listen(
+        (data) {
+          if (!mounted || _disposed) return;
+          try {
+            final decoded = jsonDecode(data.toString());
+            if (decoded is Map<String, dynamic>) {
+              Map<String, dynamic>? msg;
+              if (decoded['type'] == 'new_message' && decoded['data'] is Map) {
+                msg = Map<String, dynamic>.from(decoded['data'] as Map);
+              } else if (decoded.containsKey('text') || decoded.containsKey('senderId')) {
+                msg = decoded;
+              }
+              if (msg != null) {
+                _onIncomingMessage(msg);
+              }
+            }
+          } catch (e) {
+            debugPrint('Error parsing incoming WS message: $e');
+          }
+        },
+        onError: (err) {
+          debugPrint('WS error: $err');
+          _scheduleReconnect();
+        },
+        onDone: () {
+          debugPrint('WS connection closed');
+          _scheduleReconnect();
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('WS connect exception: $e');
+      _scheduleReconnect();
+    }
+  }
+
+  void _scheduleReconnect() {
+    if (_disposed || !mounted) return;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+      if (!_disposed && mounted) {
+        _connectWebSocket();
+      }
+    });
+  }
+
+  void _onIncomingMessage(Map<String, dynamic> msg) {
+    final msgId = (msg['_id'] ?? msg['id'])?.toString();
+    final existingIndex = msgId != null && msgId.isNotEmpty
+        ? _messages.indexWhere((m) => (m['_id'] ?? m['id'])?.toString() == msgId)
+        : -1;
+
+    setState(() {
+      if (existingIndex >= 0) {
+        _messages[existingIndex] = msg;
+      } else {
+        _messages.add(msg);
+      }
+    });
+
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -62,11 +171,7 @@ class _WorkspaceChatScreenState extends State<WorkspaceChatScreen> {
         _loading = false;
         _error = null;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-        }
-      });
+      _scrollToBottom();
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -98,12 +203,9 @@ class _WorkspaceChatScreenState extends State<WorkspaceChatScreen> {
         pdf: _attachment,
       );
       if (!mounted) return;
-      setState(() {
-        _messages.add(message);
-        _controller.clear();
-        _attachment = null;
-      });
-      await _load();
+      _onIncomingMessage(message);
+      _controller.clear();
+      _attachment = null;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)
