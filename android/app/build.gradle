@@ -26,9 +26,9 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.ymentor.app"
-    // Agora, PDF, and current Flutter Android plugins require API 36 to
+    // Agora, PDF, and current Flutter Android plugins require API 37 to
     // compile. targetSdk remains 35 to preserve the requested runtime target.
-    compileSdk 36
+    compileSdk = 37
     ndkVersion flutter.ndkVersion
 
     compileOptions {

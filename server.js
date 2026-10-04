@@ -35,8 +35,12 @@ const createChatRouter = require('./server/routes/chat');
 const createAdminRouter = require('./server/routes/admin');
 const createAgoraRouter = require('./server/routes/agora');
 const { splitEscrow } = require('./services/escrowService');
+const http = require('http');
+const socketService = require('./server/services/socketService');
 
 const app = express();
+const server = http.createServer(app);
+socketService.init(server);
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 const WIFI_HOST = process.env.WIFI_HOST || (() => {
@@ -2052,12 +2056,14 @@ app.get('/api/platform/fees', async (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, HOST, () => {
+  server.listen(PORT, HOST, () => {
     console.log(`🚀 [SERVER RUNNING] Listening on http://${HOST}:${PORT}`);
     console.log(`🌐 [LAN ACCESS] Access on mobile at http://${WIFI_HOST}:${PORT}/api`);
+    console.log(`💬 [REALTIME CHAT] WebSocket live on ws://${WIFI_HOST}:${PORT}/ws/chat`);
   });
 }
 
 app.autoSeedBaselineAccounts = autoSeedBaselineAccounts;
+app.server = server;
 
 module.exports = app;

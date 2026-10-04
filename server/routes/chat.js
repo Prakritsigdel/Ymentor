@@ -6,6 +6,7 @@ const Booking = require('../../models/Booking');
 const Workspace = require('../../models/Workspace');
 const ChatConversation = require('../../models/ChatConversation');
 const ChatMessage = require('../../models/ChatMessage');
+const socketService = require('../services/socketService');
 
 function createChatRouter({ verifyAuth, uploadsDir }) {
   const router = express.Router();
@@ -100,6 +101,33 @@ function createChatRouter({ verifyAuth, uploadsDir }) {
         global.ymentorMemoryStore.messages.push(message);
         conversation.lastMessageAt = message.createdAt;
       }
+
+      // Real-time broadcast to all clients listening to this conversation or workspace
+      try {
+        const serialized = message.toObject ? message.toObject() : { ...message };
+        serialized._id = String(serialized._id);
+        serialized.conversationId = String(serialized.conversationId);
+        serialized.senderId = String(serialized.senderId);
+
+        const targetChannels = [
+          String(conversation._id),
+          String(requestedConversationId),
+        ];
+        if (conversation.bookingId) {
+          targetChannels.push(String(conversation.bookingId));
+        }
+        if (workspaceId) {
+          targetChannels.push(String(workspaceId));
+        }
+
+        socketService.broadcastToChannels(targetChannels, {
+          type: 'new_message',
+          data: serialized,
+        });
+      } catch (broadcastErr) {
+        console.error('⚠️ [CHAT BROADCAST ERROR]', broadcastErr);
+      }
+
       return res.status(201).json(message);
     } catch (error) {
       console.error('Chat send error:', error);
