@@ -111,7 +111,7 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -467,18 +467,20 @@ async function autoSeedBaselineAccounts() {
 }
 
 // Connect to MongoDB with graceful fallback
-mongoose
-  .connect(MONGODB_URI, { serverSelectionTimeoutMS: 2500 })
-  .then(async () => {
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 2500 });
     isMongoConnected = true;
-    console.log('✅ Connected to MongoDB at', MONGODB_URI);
+    console.log(`✅ [MONGODB CONNECTED] Host: ${conn.connection.host}`);
     await autoSeedBaselineAccounts();
-  })
-  .catch(async () => {
-    console.log('⚠️ MongoDB not connected. Operating in resilient memory mode.');
+  } catch (error) {
+    console.error(`❌ [MONGODB ERROR] Connection failed: ${error.message}`);
     isMongoConnected = false;
     await autoSeedBaselineAccounts();
-  });
+  }
+};
+
+connectDB();
 
 /* =========================================================================
    1. AUTHENTICATION ROUTES (/api/auth)
@@ -2025,10 +2027,11 @@ app.get('/api/admin/users', verifyAuth, verifyRole(['admin']), async (req, res) 
 
 app.get('/api/health', (req, res) => {
   res.json({
-    status: 'ONLINE',
+    status: 'online',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    mongoConnected: isMongoConnected,
     service: 'Ymentor 3-Role API Engine',
     roles: ['admin', 'mentor', 'mentee'],
-    mongoConnected: isMongoConnected,
     timestamp: new Date().toISOString(),
   });
 });
@@ -2050,8 +2053,8 @@ app.get('/api/platform/fees', async (req, res) => {
 
 if (require.main === module) {
   app.listen(PORT, HOST, () => {
-    console.log(`🚀 Ymentor API server listening on http://${HOST}:${PORT}`);
-    console.log(`📡 Devices on your Wi-Fi can connect to http://${WIFI_HOST}:${PORT}`);
+    console.log(`🚀 [SERVER RUNNING] Listening on http://${HOST}:${PORT}`);
+    console.log(`🌐 [LAN ACCESS] Access on mobile at http://${WIFI_HOST}:${PORT}/api`);
   });
 }
 

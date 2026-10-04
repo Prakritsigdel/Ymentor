@@ -1,16 +1,17 @@
 import 'package:flutter/foundation.dart';
 
-/// The default matches the current development Wi-Fi host. For another
-/// network, override with:
-/// flutter run --dart-define=API_BASE_URL=http://<YOUR_LAN_IP>:3000
-/// Android emulators can also use http://10.0.2.2:3000 explicitly.
 class ApiConfig {
+  // UPDATE THIS TO YOUR COMPUTER'S CURRENT LOCAL IP ADDRESS
+  static const String _localIp = '192.168.0.3';
   static const String port = '3000';
 
   static String get baseUrl {
     const envValue = String.fromEnvironment('API_BASE_URL');
     if (envValue.isNotEmpty) {
-      return envValue.trim();
+      final trimmed = envValue.trim();
+      return trimmed.endsWith('/api')
+          ? trimmed.substring(0, trimmed.length - 4)
+          : trimmed;
     }
 
     if (kIsWeb) {
@@ -18,12 +19,13 @@ class ApiConfig {
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://192.168.0.6:$port';
+      return 'http://$_localIp:$port';
     }
 
     return 'http://127.0.0.1:$port';
   }
 
   static String get apiBaseUrl => '$baseUrl/api';
+  static String get healthUrl => '$apiBaseUrl/health';
   static String get uploadsBaseUrl => '$baseUrl/uploads';
 }
